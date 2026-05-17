@@ -1,0 +1,100 @@
+{
+  "common": {
+    "cancel": "Cancel",
+    "save": "Save",
+    "add": "Add",
+    "delete": "Delete"
+  },
+  "toolbar": {
+    "frames": "Frames",
+    "seconds": "Seconds",
+    "fps": "fps",
+    "play": "Play",
+    "pause": "Pause",
+    "deleteSegment": "Delete selected segment",
+    "zoom": "Zoom"
+  },
+  "trackRow": {
+    "trackColor": "Track color"
+  },
+  "segmentBlock": {
+    "resizeStart": "Resize segment start",
+    "resizeEnd": "Resize segment end"
+  },
+  "promptTrack": {
+    "distributeEvenly": "Distribute evenly",
+    "addSegment": "Add segment",
+    "deleteSegment": "Delete selected segment",
+    "addSegmentTitle": "Add segment",
+    "promptPlaceholder": "Prompt text...",
+    "segmentLabel": "Segment {n}",
+    "empty": "empty",
+    "editSegmentTitle": "Edit segment {n}",
+    "contextEdit": "Edit segment",
+    "contextAdd": "Add segment",
+    "contextDistribute": "Distribute evenly",
+    "editDialogTitle": "Edit Prompts",
+    "tabCombined": "Combined",
+    "tabIndividual": "Individual",
+    "combinedHint": "Use | to separate segments. Changes apply in real-time.",
+    "segmentCount": "{n} segment(s)"
+  },
+  "audioTrack": {
+    "addMarker": "Add marker",
+    "importFile": "Import audio file\u2026",
+    "importUrl": "Import from URL\u2026",
+    "enterUrl": "Enter audio URL:",
+    "frameLabel": "Frame {n}",
+    "markerAriaLabel": "Marker: {label}",
+    "markerAtFrame": "Marker at frame {frame}",
+    "editMarker": "Edit marker",
+    "markerLabelInput": "Marker label",
+    "placeholder": "Audio Track",
+    "placeholderHint": "Double-click to add content"
+  },
+  "imageTrack": {
+    "dropZone": "Image track drop zone",
+    "addSegment": "Add image",
+    "deleteSegment": "Delete selected segment",
+    "importFile": "Import image file\u2026",
+    "importUrl": "Import from URL\u2026",
+    "enterUrl": "Enter image URL:",
+    "placeholder": "Image Track",
+    "placeholderHint": "Double-click to add content"
+  },
+  "maintainTrack": {
+    "dropZone": "Maintain track drop zone",
+    "segmentLabel": "Segment {n}",
+    "segmentPlaceholder": "Click segment to Write the prompt...",
+    "promptPlaceholder": "Prompt text...",
+    "addImage": "Add image",
+    "tabCombined": "Combined",
+    "tabIndividual": "Individual",
+    "combinedHint": "Use | to separate segments. Changes apply in real-time.",
+    "contextEdit": "Edit segment",
+    "contextAdd": "Add segment",
+    "contextDelete": "Delete segment",
+    "contextDistribute": "Distribute evenly",
+    "flf": "First Last frames",
+    "fmlf": "Multiple frames",
+    "ref": "Reference frames"
+  },
+  "mediaSelector": {
+    "tabInputs": "Inputs",
+    "tabOutputs": "Outputs",
+    "tabLocal": "Local",
+    "tabUrl": "URL",
+    "searchPlaceholder": "Search...",
+    "sort": "Sort by {by}",
+    "viewList": "List view",
+    "viewGrid": "Grid view",
+    "localPathPlaceholder": "Absolute folder path...",
+    "urlHint": "Paste an http(s) URL to a media file.",
+    "urlConfirm": "Confirm URL",
+    "urlChecking": "Checking...",
+    "urlErrorTitle": "URL Error",
+    "urlErrorNotFound": "File not found or access denied.",
+    "empty": "No files found",
+    "error": "Failed to load: {msg}"
+  }
+}

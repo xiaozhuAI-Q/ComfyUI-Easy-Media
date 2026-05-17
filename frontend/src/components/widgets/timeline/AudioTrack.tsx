@@ -1,0 +1,500 @@
+import { useRef, useState } from 'react'
+import { Music2 } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { Popover, PopoverContent, PopoverAnchor } from '@/components/ui/popover'
+import { MediaSelector } from '@/components/widgets/mediaSelector/MediaSelector'
+import type { MediaTab } from '@/components/widgets/mediaSelector/MediaSelector'
+import { SegmentBlock } from './SegmentBlock'
+import { TrackRow } from './TrackRow'
+import { AudioWaveform } from './AudioWaveform'
+import type { Track, AudioSegment, Segment, Marker, TimeDisplayFormat } from '@/types/timeline'
+import { useT } from '@/lib/i18n'
+import { uuid } from '@/lib/uuid'
+import { secondsToAudioFrames } from '@/lib/timeline-utils'
+
+interface AudioTrackProps {
+  track: Track
+  totalFrames: number
+  frameRate: number
+  displayFormat: TimeDisplayFormat
+  areaWidth: number
+  selectedId: string | null
+  onSelectedIdChange: (id: string | null) => void
+  onTrackChange: (patch: Partial<Track>) => void
+  onSegmentsChange: (segments: Segment[]) => void
+}
+
+/** Map segment source_type to the MediaSelector tab */
+function sourceTypeToTab(sourceType: string | undefined): MediaTab {
+  if (sourceType === 'input') return 'inputs'
+  if (sourceType === 'url') return 'url'
+  if (sourceType === 'local') return 'local'
+  return 'inputs'
+}
+
+function frameToX(frame: number, total: number, width: number) {
+  return (frame / Math.max(total - 1, 1)) * width
+}
+
+export function AudioTrack({
+  track,
+  totalFrames,
+  frameRate,
+  displayFormat,
+  areaWidth,
+  selectedId,
+  onSelectedIdChange,
+  onTrackChange,
+  onSegmentsChange,
+}: Readonly<AudioTrackProps>) {
+  const t = useT()
+  const containerRef = useRef<HTMLElement>(null)
+  const [pendingDropFrame, setPendingDropFrame] = useState<number | null>(null)
+  // State for editing a marker label inline
+  const [editingMarker, setEditingMarker] = useState<{ segId: string; markerId: string; label: string } | null>(null)
+  const [popoverOpen, setPopoverOpen] = useState(false)
+  const [popoverDefaultTab, setPopoverDefaultTab] = useState<MediaTab>('inputs')
+  const [anchorPos, setAnchorPos] = useState({ x: 0, y: 0 })
+  const [editingSegId, setEditingSegId] = useState<string | null>(null)
+  const [selectorValue, setSelectorValue] = useState('')
+
+  const segments = track.segments as AudioSegment[]
+
+  // Total occupied frames so we know if more audio can be imported
+  const lastOccupied = segments.reduce((max, s) => Math.max(max, s.end_frame), -1)
+  const canImport = lastOccupied < totalFrames - 1
+
+  function openPopover(e: React.MouseEvent, defaultTab: MediaTab, segId: string | null, currentValue: string) {
+    const rect = containerRef.current?.getBoundingClientRect()
+    const el = containerRef.current
+    const zoom = (rect && el) ? rect.width / el.offsetWidth : 1
+    setAnchorPos({
+      x: (e.clientX - (rect?.left ?? 0)) / zoom,
+      y: (e.clientY - (rect?.top ?? 0)) / zoom,
+    })
+    setPopoverDefaultTab(defaultTab)
+    setEditingSegId(segId)
+    setSelectorValue(currentValue)
+    setPopoverOpen(true)
+  }
+
+  function handleSelectorChange(filePath: string) {
+    setSelectorValue(filePath)
+    const fileName = filePath.split('/').pop() ?? filePath
+    const isUrl = filePath.startsWith('http')
+
+    if (editingSegId) {
+      onSegmentsChange(
+        segments.map((s) =>
+          s.id === editingSegId
+            ? {
+                ...s,
+                content: isUrl
+                  ? { source_type: 'url', url: filePath, file_name: fileName }
+                  : { source_type: 'input', file_path: filePath, file_name: fileName },
+              }
+            : s,
+        ),
+      )
+    } else {
+      // Build source URL
+      let src = filePath
+      if (!isUrl) {
+        src = `/api/view?filename=${encodeURIComponent(filePath)}&type=input`
+      }
+
+      // Create temporary audio to get actual duration
+      const tempAudio = new Audio(src)
+      tempAudio.preload = 'metadata'
+
+      tempAudio.addEventListener('loadedmetadata', () => {
+        const actualDuration = tempAudio.duration
+        console.log(`[AudioTrack] Actual audio duration: ${actualDuration.toFixed(3)}s`)
+
+        const cursor = lastOccupied >= 0 ? lastOccupied + 1 : 0
+        if (cursor >= totalFrames) return
+
+        const actualFrames = Math.ceil(actualDuration * frameRate)
+        const segStart = cursor
+        const segEnd = Math.min(totalFrames - 1, cursor + actualFrames - 1)
+        const newSeg: AudioSegment = {
+          id: uuid(),
+          start_frame: segStart,
+          end_frame: segEnd,
+          origin_start_frame: segStart,
+          origin_end_frame: segEnd,
+          content: isUrl
+            ? { source_type: 'url', url: filePath, file_name: fileName }
+            : { source_type: 'input', file_path: filePath, file_name: fileName },
+          color: track.color,
+          markers: [],
+        }
+        onSegmentsChange([...segments, newSeg].toSorted((a, b) => a.start_frame - b.start_frame))
+        setEditingSegId(newSeg.id)
+      })
+
+      tempAudio.addEventListener('error', () => {
+        console.error(`[AudioTrack] Failed to load audio: ${src}`)
+        const cursor = lastOccupied >= 0 ? lastOccupied + 1 : 0
+        if (cursor >= totalFrames) return
+        const fallbackEnd = Math.min(totalFrames - 1, cursor + secondsToAudioFrames(5, frameRate) - 1)
+        const newSeg: AudioSegment = {
+          id: uuid(),
+          start_frame: cursor,
+          end_frame: fallbackEnd,
+          origin_start_frame: cursor,
+          origin_end_frame: fallbackEnd,
+          content: isUrl
+            ? { source_type: 'url', url: filePath, file_name: fileName }
+            : { source_type: 'input', file_path: filePath, file_name: fileName },
+          color: track.color,
+          markers: [],
+        }
+        onSegmentsChange([...segments, newSeg].toSorted((a, b) => a.start_frame - b.start_frame))
+        setEditingSegId(newSeg.id)
+      })
+    }
+    setPopoverOpen(false)
+  }
+
+  function handleDeleteSegment(segId: string) {
+    onSegmentsChange(segments.filter((s) => s.id !== segId))
+    setPopoverOpen(false)
+    if (selectedId === segId) onSelectedIdChange(null)
+  }
+
+  function handleTrackAreaClick(e: React.MouseEvent) {
+    if (!canImport) return
+    openPopover(e, 'inputs', null, '')
+  }
+
+  function handleSegmentAtX(frame: number): AudioSegment | null {
+    return segments.find((s) => frame >= s.start_frame && frame <= s.end_frame) ?? null
+  }
+
+  function handleClick(e: React.MouseEvent) {
+    const rect = containerRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const scale = areaWidth / Math.max(totalFrames - 1, 1)
+    const frame = Math.round((e.clientX - rect.left) / scale)
+    if (!handleSegmentAtX(frame)) {
+      onSelectedIdChange(null)
+    }
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault()
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const frame = Math.round((x / areaWidth) * (totalFrames - 1))
+    setPendingDropFrame(frame)
+  }
+
+  async function handleDrop(e: React.DragEvent) {
+    e.preventDefault()
+    const files = e.dataTransfer.files
+    if (!files || !canImport) return
+    const updated = [...segments]
+    let cursor = pendingDropFrame ?? (lastOccupied >= 0 ? lastOccupied + 1 : 0)
+    for (const file of Array.from(files)) {
+      if (cursor >= totalFrames) break
+      try {
+        const form = new FormData()
+        form.append('file', file)
+        const res = await fetch('/easy-media/upload', { method: 'POST', body: form })
+        if (!res.ok) continue
+        const { file_name: fileName } = await res.json() as { file_name: string }
+
+        // Detect actual audio duration from the uploaded file
+        const src = `/view?filename=${encodeURIComponent(fileName)}&type=input`
+        const duration = await new Promise<number>((resolve) => {
+          const audio = new Audio(src)
+          audio.preload = 'metadata'
+          audio.addEventListener('loadedmetadata', () => resolve(audio.duration))
+          audio.addEventListener('error', () => resolve(5))
+        })
+
+        const actualFrames = Math.ceil(duration * frameRate)
+        const dropEnd = Math.min(totalFrames - 1, cursor + actualFrames - 1)
+        const newSeg: AudioSegment = {
+          id: uuid(),
+          start_frame: cursor,
+          end_frame: dropEnd,
+          origin_start_frame: cursor,
+          origin_end_frame: dropEnd,
+          content: {
+            source_type: 'input',
+            file_path: fileName,
+            file_name: fileName,
+          },
+          color: track.color,
+          markers: [],
+        }
+        updated.push(newSeg)
+        cursor = newSeg.end_frame + 1
+      } catch {
+        // skip failed uploads
+      }
+    }
+    onSegmentsChange(updated.toSorted((a, b) => a.start_frame - b.start_frame))
+    setPendingDropFrame(null)
+  }
+
+  function handleResizeEnd(segmentId: string, edge: 'start' | 'end', deltaFrames: number) {
+    if (track.locked) return
+    const seg = segments.find((s) => s.id === segmentId)
+    if (!seg) return
+    const originStart = seg.origin_start_frame ?? seg.start_frame
+    const originEnd = seg.origin_end_frame ?? seg.end_frame
+    const others = segments.filter((s) => s.id !== segmentId).toSorted((a, b) => a.start_frame - b.start_frame)
+    let newStart = seg.start_frame
+    let newEnd = seg.end_frame
+    if (edge === 'start') {
+      newStart = Math.max(originStart, seg.start_frame + deltaFrames)
+      const prev = others.findLast((s) => s.end_frame < seg.end_frame)
+      if (prev) newStart = Math.max(newStart, prev.end_frame + 1)
+      newStart = Math.min(newStart, seg.end_frame - 1)
+    } else {
+      newEnd = Math.min(originEnd, seg.end_frame + deltaFrames)
+      const next = others.find((s) => s.start_frame > seg.start_frame)
+      if (next) newEnd = Math.min(newEnd, next.start_frame - 1)
+      newEnd = Math.max(newEnd, seg.start_frame + 1)
+    }
+    onSegmentsChange(segments.map((s) => s.id === segmentId ? { ...s, start_frame: newStart, end_frame: newEnd } : s))
+  }
+
+  function handleDragEnd(segmentId: string, deltaFrames: number, origStart: number) {
+    if (track.locked) return
+    const seg = segments.find((s) => s.id === segmentId)
+    if (!seg) return
+    const span = seg.end_frame - seg.start_frame
+    const newStart = Math.max(0, origStart + deltaFrames)
+    const newEnd = Math.min(totalFrames - 1, newStart + span)
+    const finalStart = newEnd - span
+    const shift = Math.max(0, finalStart) - seg.start_frame
+
+    // Prevent overlap; also shift origin bounds so waveform ratios stay correct
+    const sorted = segments
+      .map((s) => {
+        if (s.id !== segmentId) return s
+        return {
+          ...s,
+          start_frame: Math.max(0, finalStart),
+          end_frame: Math.min(totalFrames - 1, newEnd),
+          origin_start_frame: (s.origin_start_frame ?? s.start_frame) + shift,
+          origin_end_frame: (s.origin_end_frame ?? s.end_frame) + shift,
+        }
+      })
+      .toSorted((a, b) => a.start_frame - b.start_frame)
+    onSegmentsChange(sorted)
+  }
+
+  function addMarker(segId: string, frame: number) {
+    const updated = segments.map((s) => {
+      if (s.id !== segId) return s
+      const markers: Marker[] = [...(s.markers ?? []), { id: uuid(), frame, label: '' }]
+      return { ...s, markers }
+    })
+    onSegmentsChange(updated)
+  }
+
+  function deleteMarker(segId: string, markerId: string) {
+    const updated = segments.map((s) => {
+      if (s.id !== segId) return s
+      return { ...s, markers: (s.markers ?? []).filter((m) => m.id !== markerId) }
+    })
+    onSegmentsChange(updated)
+  }
+
+  function commitMarkerLabel(segId: string, markerId: string, label: string) {
+    const updated = segments.map((s) => {
+      if (s.id !== segId) return s
+      return {
+        ...s,
+        markers: (s.markers ?? []).map((m) => (m.id === markerId ? { ...m, label } : m)),
+      }
+    })
+    onSegmentsChange(updated)
+    setEditingMarker(null)
+  }
+
+  const toolSlots: [React.ReactNode, React.ReactNode, React.ReactNode] = [
+    <button
+      key="marker"
+      type="button"
+      title={t('audioTrack.addMarker')}
+      className="w-full h-full flex items-center justify-center hover:bg-accent"
+      onClick={() => {
+        if (!segments.length) return
+        const seg = segments[0]
+        const mid = Math.floor((seg.start_frame + seg.end_frame) / 2)
+        addMarker(seg.id, mid)
+      }}
+    >
+      {/* <Bookmark className="w-2.5 h-2.5 text-muted-foreground" /> */}
+    </button>,
+    undefined,
+    undefined,
+  ]
+
+  return (
+    <TrackRow track={track} onTrackChange={onTrackChange} toolSlots={toolSlots}>
+      <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+        <section
+          ref={containerRef}
+          aria-label={t('audioTrack.dropZone')}
+          className="relative w-full h-full cursor-default"
+          onDragOver={handleDragOver}
+          onDragLeave={() => setPendingDropFrame(null)}
+          onDrop={handleDrop}
+          onClick={handleClick}
+          onDoubleClick={(e) => {
+            if (!canImport) return
+            openPopover(e, 'inputs', null, '')
+          }}
+        >
+          {/* Virtual anchor positioned at right-click coordinates */}
+          <PopoverAnchor asChild>
+            <span
+              className="absolute w-0 h-0 pointer-events-none"
+              style={{ left: anchorPos.x, top: anchorPos.y }}
+            />
+          </PopoverAnchor>
+
+          {segments.length === 0 ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground pointer-events-none select-none opacity-40">
+                <div className="flex items-center gap-1">
+                  <Music2 className="w-3 h-3" />
+                  <span className="text-[11px]">
+                    {t('audioTrack.placeholder')}
+                  </span>
+                </div>
+                <span className="text-[10px]">{t('audioTrack.placeholderHint')}</span>
+              </div>
+            ) : (
+              <>
+                {segments.map((seg) => (
+                  <SegmentBlock
+                    key={seg.id}
+                    segment={seg}
+                    totalFrames={totalFrames}
+                    areaWidth={areaWidth}
+                    interactive={!track.locked}
+                    selected={selectedId === seg.id}
+                    onSelect={(s) => onSelectedIdChange(selectedId === s.id ? null : s.id)}
+                    onDragEnd={handleDragEnd}
+                    onResizeEnd={handleResizeEnd}
+                    frameRate={frameRate}
+                    displayFormat={displayFormat}
+                    backgroundSlot={<AudioWaveform
+                      content={seg.content}
+                      startRatio={seg.origin_end_frame !== undefined && seg.origin_start_frame !== undefined
+                        ? (seg.start_frame - seg.origin_start_frame) / (seg.origin_end_frame - seg.origin_start_frame)
+                        : 0}
+                      endRatio={seg.origin_end_frame !== undefined && seg.origin_start_frame !== undefined
+                        ? (seg.end_frame - seg.origin_start_frame) / (seg.origin_end_frame - seg.origin_start_frame)
+                        : 1}
+                    />}
+                    onContextMenu={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      onSelectedIdChange(seg.id)
+                      openPopover(
+                        e,
+                        sourceTypeToTab(seg.content.source_type),
+                        seg.id,
+                        seg.content.file_path ?? seg.content.local_path ?? seg.content.url ?? '',
+                      )
+                    }}
+                  >
+                    <span className="absolute top-0.5 truncate text-[8px]">{seg.content.file_name}</span>
+
+                    {/* Markers */}
+                    {(seg.markers ?? []).map((marker) => (
+                      <TooltipProvider key={marker.id} delayDuration={200}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              aria-label={marker.label ? t('audioTrack.markerAriaLabel', { label: marker.label }) : t('audioTrack.markerAtFrame', { frame: marker.frame })}
+                              className="absolute top-0 w-0.5 h-full bg-yellow-300/80 cursor-pointer hover:bg-yellow-200 z-20"
+                              style={{ left: frameToX(marker.frame, totalFrames, areaWidth) }}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setEditingMarker({ segId: seg.id, markerId: marker.id, label: marker.label ?? '' })
+                              }}
+                            />
+                          </TooltipTrigger>
+                          <TooltipContent side="top">
+                            <p>{marker.label || t('audioTrack.frameLabel', { n: marker.frame })}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    ))}
+                  </SegmentBlock>
+                ))}
+              </>
+            )}
+
+            {/* Drop indicator */}
+            {pendingDropFrame !== null && (
+              <div
+                className="absolute top-0 w-0.5 h-full bg-foreground/60 pointer-events-none"
+                style={{ left: frameToX(pendingDropFrame, totalFrames, areaWidth) }}
+              />
+            )}
+
+        </section>
+
+        <PopoverContent
+          data-audio-popover=""
+          className="p-0 w-auto"
+          side="bottom"
+          align="start"
+          onOpenAutoFocus={(e: Event) => e.preventDefault()}
+        >
+          <MediaSelector
+            value={selectorValue}
+            onChange={handleSelectorChange}
+            mediaType="audio"
+            defaultTab={popoverDefaultTab}
+          />
+        </PopoverContent>
+      </Popover>
+
+      {/* Marker label editor dialog */}
+      <Dialog open={!!editingMarker} onOpenChange={(open) => { if (!open) setEditingMarker(null) }}>
+        <DialogContent className="max-w-xs p-4 space-y-2">
+          <DialogTitle className="text-xs text-muted-foreground font-normal">
+            {t('audioTrack.markerLabelInput')}
+          </DialogTitle>
+          {editingMarker != null && (() => {
+            const m = editingMarker
+            return (
+              <>
+                <Input
+                  autoFocus
+                  className="h-7 text-xs"
+                  value={m.label}
+                  onChange={(e) => setEditingMarker({ ...m, label: e.target.value })}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') commitMarkerLabel(m.segId, m.markerId, m.label)
+                    if (e.key === 'Escape') setEditingMarker(null)
+                  }}
+                />
+                <div className="flex gap-2 justify-end">
+                  <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setEditingMarker(null)}>{t('common.cancel')}</Button>
+                  <Button size="sm" variant="destructive" className="h-6 text-xs" onClick={() => { deleteMarker(m.segId, m.markerId); setEditingMarker(null) }}>{t('common.delete')}</Button>
+                  <Button size="sm" className="h-6 text-xs" onClick={() => commitMarkerLabel(m.segId, m.markerId, m.label)}>{t('common.save')}</Button>
+                </div>
+              </>
+            )
+          })()}
+        </DialogContent>
+      </Dialog>
+    </TrackRow>
+  )
+}

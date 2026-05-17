@@ -1,0 +1,100 @@
+{
+  "common": {
+    "cancel": "取消",
+    "save": "保存",
+    "add": "添加",
+    "delete": "删除"
+  },
+  "toolbar": {
+    "frames": "帧",
+    "seconds": "秒",
+    "fps": "帧/秒",
+    "play": "播放",
+    "pause": "暂停",
+    "deleteSegment": "删除选中片段",
+    "zoom": "缩放"
+  },
+  "trackRow": {
+    "trackColor": "轨道颜色"
+  },
+  "segmentBlock": {
+    "resizeStart": "调整片段开始",
+    "resizeEnd": "调整片段结束"
+  },
+  "promptTrack": {
+    "distributeEvenly": "均匀分布",
+    "addSegment": "添加分段",
+    "deleteSegment": "删除选中片段",
+    "addSegmentTitle": "添加分段",
+    "promptPlaceholder": "提示词...",
+    "segmentLabel": "片段 {n}",
+    "empty": "空",
+    "editSegmentTitle": "编辑分段 {n}",
+    "contextEdit": "编辑片段",
+    "contextAdd": "添加分段",
+    "contextDistribute": "均匀分布",
+    "editDialogTitle": "编辑提示词",
+    "tabCombined": "整体编辑",
+    "tabIndividual": "逐段编辑",
+    "combinedHint": "用 | 分隔各分段，修改实时生效。",
+    "segmentCount": "共 {n} 个分段"
+  },
+  "audioTrack": {
+    "addMarker": "添加标记",
+    "importFile": "导入音频文件…",
+    "importUrl": "从 URL 导入…",
+    "enterUrl": "请输入音频 URL：",
+    "frameLabel": "第 {n} 帧",
+    "markerAriaLabel": "标记：{label}",
+    "markerAtFrame": "第 {frame} 帧标记",
+    "editMarker": "编辑标记",
+    "markerLabelInput": "标记名称",
+    "placeholder": "音频轨道",
+    "placeholderHint": "双击可添加内容"
+  },
+  "imageTrack": {
+    "dropZone": "图片轨道拖放区域",
+    "addSegment": "添加图片",
+    "deleteSegment": "删除选中片段",
+    "importFile": "导入图片文件…",
+    "importUrl": "从 URL 导入…",
+    "enterUrl": "请输入图片 URL：",
+    "placeholder": "图片轨道",
+    "placeholderHint": "双击可添加内容"
+  },
+  "maintainTrack": {
+    "dropZone": "主轨拖放区域",
+    "segmentLabel": "片段 {n}",
+    "segmentPlaceholder": "点击片段修改提示...",
+    "promptPlaceholder": "提示词...",
+    "addImage": "添加图片",
+    "tabCombined": "整体编辑",
+    "tabIndividual": "逐段编辑",
+    "combinedHint": "用 | 分隔各分段，修改实时生效。",
+    "contextEdit": "编辑片段",
+    "contextAdd": "添加片段",
+    "contextDelete": "删除片段",
+    "contextDistribute": "均匀分布",
+    "flf": "首尾帧",
+    "fmlf": "多帧",
+    "ref": "参考帧"
+  },
+  "mediaSelector": {
+    "tabInputs": "输入",
+    "tabOutputs": "输出",
+    "tabLocal": "本地",
+    "tabUrl": "URL",
+    "searchPlaceholder": "搜索...",
+    "sort": "排序：{by}",
+    "viewList": "列表视图",
+    "viewGrid": "网格视图",
+    "localPathPlaceholder": "本地文件夹绝对路径...",
+    "urlHint": "粘贴媒体文件的 http(s) URL。",
+    "urlConfirm": "确认 URL",
+    "urlChecking": "检测中...",
+    "urlErrorTitle": "URL 错误",
+    "urlErrorNotFound": "未找到文件，或服务器拒绝访问。",
+    "empty": "未找到文件",
+    "error": "加载失败：{msg}"
+  }
+}

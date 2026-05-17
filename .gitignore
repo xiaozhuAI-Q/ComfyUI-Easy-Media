@@ -2,6 +2,8 @@ __pycache__
 .DS_Store
 node_modules/
 docs/
+dist/dev/
+config.yaml
 *.cache
 *.ini
 *.bak

@@ -1,5 +1,11 @@
 # ComfyUI Easy Media
 
+<div align="center">
+<a href="./README.md"><img src="https://img.shields.io/badge/🇬🇧English-0b8cf5"></a>
+<a href="./README_CN.md"><img src="https://img.shields.io/badge/🇨🇳中文简体-e9e9e9"></a>
+<br>
+</div>
+
 A ComfyUI custom node package for streamlined media loading and video pipeline assembly. Provides intuitive nodes that simplify media resource editing and loading with user-friendly parameters, making it easier to build and configure video processing workflows.
 
 <table>

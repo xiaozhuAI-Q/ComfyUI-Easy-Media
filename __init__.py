@@ -1,0 +1,58 @@
+import os
+import server
+import yaml
+import nodes as _nodes
+
+from typing_extensions import override
+from comfy_api.latest import ComfyExtension, io
+from aiohttp import web
+from .nodes import TimelineEditor, TimelineInfoOutput, TimelineSegmentOutput, ImageIndexesToIntList, LTXVAddGuidesFromBatchIndexes
+from .routes import *
+
+# Define the path
+root_path = os.path.dirname(__file__)
+project_name = os.path.basename(root_path)
+
+web_default_version = 'release'
+config_path = os.path.join(root_path, "config.yaml")
+if os.path.isfile(config_path):
+    with open(config_path, 'r') as f:
+        data = yaml.load(f, Loader=yaml.FullLoader)
+        if data and "WEB_VERSION" in data:
+            dist_path = f"dist/{data['WEB_VERSION']}"
+            with open(config_path, 'w') as f:
+                yaml.dump(data, f)
+        else:
+            dist_path = f"dist/{web_default_version}"
+    if not os.path.exists(os.path.join(root_path, dist_path)):
+        print(f"web root {data['WEB_VERSION']} not found, using default")
+        dist_path = f"dist/{web_default_version}"
+else:
+    dist_path = f"dist/{web_default_version}"
+    
+dist_path = os.path.join(root_path, dist_path)
+if os.path.exists(dist_path):
+    # Add the routes for the extension
+    server.PromptServer.instance.app.add_routes([
+        web.static(f"/{project_name}/", dist_path),
+    ])
+
+    _nodes.EXTENSION_WEB_DIRS[project_name] = dist_path
+else:
+    print(f"Warning: Dist directory not found for {project_name}. Frontend assets will not be served.")
+
+# Register extension
+class EasyMediaExtension(ComfyExtension):
+    @override
+    async def get_node_list(self) -> list[type[io.ComfyNode]]:
+        return [
+            TimelineEditor,
+            TimelineInfoOutput,
+            TimelineSegmentOutput,
+            ImageIndexesToIntList,
+            # LTXV
+            LTXVAddGuidesFromBatchIndexes,
+        ]
+
+async def comfy_entrypoint() -> EasyMediaExtension:
+    return EasyMediaExtension()

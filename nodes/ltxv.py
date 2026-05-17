@@ -1,0 +1,116 @@
+from comfy_extras.nodes_lt import get_noise_mask, LTXVAddGuide, _append_guide_attention_entry, preprocess
+import types
+import math
+from typing import Tuple
+import comfy
+from comfy_api.latest import io
+import numpy as np
+import torch
+import logging
+import comfy.model_management as mm
+import comfy.ldm.modules.attention as _comfy_attn
+from comfy.ldm.lightricks.model import apply_rotary_emb as _apply_rope
+try:
+    from comfy.ldm.lightricks.model import GuideAttentionMask as _GuideAttentionMask, _attention_with_guide_mask as _ltx_attn_with_guide_mask
+except ImportError:
+    _GuideAttentionMask = None
+    _ltx_attn_with_guide_mask = None
+device = mm.get_torch_device()
+import latent_preview
+
+# code inspired by https://github.com/kijai/ComfyUI-KJNodes/blob/main/nodes/ltxv_nodes.py#L21
+class LTXVAddGuidesFromBatchIndexes(LTXVAddGuide):
+
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="LTXVAddGuidesFromBatchIndexes",
+            category="conditioning/ltxv",
+            description="Adds multiple guide images from a batch to the latent at specified frame indices. Non-black images in the batch are used as guides.",
+            inputs=[
+                io.Conditioning.Input("positive"),
+                io.Conditioning.Input("negative"),
+                io.Vae.Input("vae"),
+                io.Latent.Input("latent"),
+                io.Image.Input("images", tooltip="Batch of images - non-black images will be used as guides"),
+                io.Int.Input(
+                    id="img_compression", default=18, min=0, max=100, tooltip="Amount of compression to apply on image."
+                ),
+                io.String.Input("image_indexes", default="", tooltip="Comma-separated frame indices for each image in the batch, e.g. '0,61,121'. If fewer indices than images, remaining images are skipped."),
+                io.Float.Input("strength", default=1.0, min=0.0, max=1.0, step=0.01),
+            ],
+            outputs=[
+                io.Conditioning.Output(display_name="positive"),
+                io.Conditioning.Output(display_name="negative"),
+                io.Latent.Output(display_name="latent"),
+            ],
+        )
+
+    @classmethod
+    def execute(cls, positive, negative, vae, latent, images, img_compression, image_indexes, strength) -> io.NodeOutput:
+        scale_factors = vae.downscale_index_formula
+        latent_image = latent["samples"]
+        noise_mask = get_noise_mask(latent)
+
+        _, _, latent_length, latent_height, latent_width = latent_image.shape
+
+        parsed_indexes = [int(x.strip()) for x in image_indexes.split(",") if x.strip()]
+
+        # If no indexes provided, calculate evenly distributed frame indices
+        if not parsed_indexes:
+            # Find valid (non-black) images first
+            valid_count = 0
+            for i in range(images.shape[0]):
+                if images[i].max() > 0.001:
+                    valid_count += 1
+
+            if valid_count > 0:
+                # Evenly distribute from 0 to latent_length-1
+                parsed_indexes = np.linspace(0, latent_length - 1, valid_count, dtype=int).tolist()
+
+        # Process each image in the batch
+        if img_compression > 0:
+            output_images = []
+            for i in range(images.shape[0]):
+                output_images.append(preprocess(images[i], img_compression))
+
+        batch_size = images.shape[0]
+
+        for i in range(batch_size):
+            if i >= len(parsed_indexes):
+                break
+
+            img = images[i:i+1]
+
+            # If strength is a list/tuple, use corresponding value for this image, otherwise use the single strength value for all images
+            if isinstance(strength, (list, tuple)):
+                strength = strength[i] if i < len(strength) else strength[-1]
+
+            # Check if image is not black and use provided frame index
+            if img.max() > 0.001:
+                f_idx = parsed_indexes[i]
+
+                image_1, t = cls.encode(vae, latent_width, latent_height, img, scale_factors)
+
+                frame_idx, latent_idx = cls.get_latent_index(positive, latent_length, len(image_1), f_idx, scale_factors)
+
+                if latent_idx + t.shape[2] <= latent_length:
+                    positive, negative, latent_image, noise_mask = cls.append_keyframe(
+                        positive,
+                        negative,
+                        frame_idx,
+                        latent_image,
+                        noise_mask,
+                        t,
+                        strength,
+                        scale_factors,
+                    )
+
+                    # Track this guide for per-reference attention control.
+                    pre_filter_count = t.shape[2] * t.shape[3] * t.shape[4]
+                    guide_latent_shape = list(t.shape[2:])  # [F, H, W]
+                    positive, negative = _append_guide_attention_entry(positive, negative, pre_filter_count, guide_latent_shape, strength=strength)
+                else:
+                    print(f"Warning: Skipping guide at index {i} - conditioning frames exceed latent sequence length")
+
+        return io.NodeOutput(positive, negative, {"samples": latent_image, "noise_mask": noise_mask})

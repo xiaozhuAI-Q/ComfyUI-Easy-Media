@@ -1,0 +1,171 @@
+{
+  "easy timelineEditor": {
+    "display_name": "时间轴编辑器",
+    "description": "加载时间轴媒体项目（提示词、图像、音频轨道）并输出结构化数据。",
+    "inputs": {
+      "resolution": {
+        "name": "分辨率",
+        "tooltip": "选择分辨率或选择'自定义'来指定您自己的宽度和高度。"
+      },
+      "format": {
+        "name": "格式",
+        "tooltip": "选择视频格式以自动设置分辨率和帧率。"
+      },
+      "timeline_data": {
+        "name": "时间轴数据",
+        "tooltip": "包含轨道、片段和媒体项目的JSON时间轴数据。"
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "时间轴信息"
+      },
+      "1": {
+        "name": "图像"
+      },
+      "2": {
+        "name": "音频"
+      }
+    }
+  },
+  "easy timelineInfoOutput": {
+    "display_name": "时间轴信息输出",
+    "description": "输出时间轴信息，包括格式化的提示词、尺寸和图像索引。",
+    "inputs": {
+      "timeline_info": {
+        "name": "时间轴信息",
+        "tooltip": "来自时间轴编辑器节点的时间轴信息。"
+      },
+      "prompt_format": {
+        "name": "提示词格式",
+        "tooltip": "选择提示词格式。promptRelay 格式会添加帧范围。"
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "提示词"
+      },
+      "1": {
+        "name": "宽度"
+      },
+      "2": {
+        "name": "高度"
+      },
+      "3": {
+        "name": "总帧数"
+      },
+      "4": {
+        "name": "帧率"
+      },
+      "5": {
+        "name": "图像索引"
+      }
+    }
+  },
+  "easy timelineSegmentOutput": {
+    "display_name": "时间轴片段输出",
+    "description": "输出时间轴中特定片段的数据。",
+    "inputs": {
+      "timeline_info": {
+        "name": "时间轴信息",
+        "tooltip": "来自时间轴编辑器节点的时间轴信息。"
+      },
+      "images": {
+        "name": "图像",
+        "tooltip": "来自时间轴编辑器节点的图像。"
+      },
+      "audio": {
+        "name": "音频",
+        "tooltip": "来自时间轴编辑器节点的音频。"
+      },
+      "segment_index": {
+        "name": "片段索引",
+        "tooltip": "要输出的片段索引（从0开始）。"
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "提示词"
+      },
+      "1": {
+        "name": "类型"
+      },
+      "2": {
+        "name": "有图像"
+      },
+      "3": {
+        "name": "图像索引"
+      },
+      "4": {
+        "name": "图像"
+      },
+      "5": {
+        "name": "音频"
+      }
+    }
+  },
+  "easy imageIndexesToIntList": {
+    "display_name": "图像索引转整数列表",
+    "description": "将逗号分隔的图像索引字符串转换为整数列表。",
+    "inputs": {
+      "image_indexes": {
+        "name": "图像索引",
+        "tooltip": "逗号分隔的图像索引字符串，例如 '0,61,121'。"
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "索引列表"
+      }
+    }
+  },
+  "LTXVAddGuidesFromBatchIndexes": {
+    "display_name": "LTXV 添加引导图（按批次索引）",
+    "description": "从批次中的多个引导图像添加到潜在空间指定帧索引位置。批次中的非黑色图像将用作引导。",
+    "inputs": {
+      "positive": {
+        "name": "正向条件",
+        "tooltip": "正向条件。"
+      },
+      "negative": {
+        "name": "负向条件",
+        "tooltip": "负向条件。"
+      },
+      "vae": {
+        "name": "VAE",
+        "tooltip": "用于编码图像的VAE模型。"
+      },
+      "latent": {
+        "name": "Latent",
+        "tooltip": "要添加引导的Latent。"
+      },
+      "images": {
+        "name": "图像",
+        "tooltip": "图像批次 - 非黑色图像将用作引导。"
+      },
+      "img_compression": {
+        "name": "图像压缩",
+        "tooltip": "应用于图像的压缩量。"
+      },
+      "image_indexes": {
+        "name": "图像索引",
+        "tooltip": "每个图像的逗号分隔帧索引，例如 '0,61,121'。如果索引少于图像数量，剩余图像将被跳过。"
+      },
+      "strength": {
+        "name": "强度",
+        "tooltip": "引导效果的强度。"
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "正向条件"
+      },
+      "1": {
+        "name": "负向条件"
+      },
+      "2": {
+        "name": "Latent"
+      }
+    }
+  }
+}

@@ -9,7 +9,7 @@ import torch.nn.functional as F
 import folder_paths
 
 
-def load_image_tensor(source_type, file_path, local_path, url):
+def load_image_tensor(source_type: str, file_path: str | None, local_path: str | None, url: str | None) -> torch.Tensor | None:
     """Load a single image → float32 [1,H,W,C] tensor, or None on failure."""
     from PIL import Image  # type: ignore[import]
     import io as _io

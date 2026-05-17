@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import type { TimeDisplayFormat } from '@/types/timeline'
 
 interface TimelineRulerProps {
@@ -48,6 +48,12 @@ function computeTickInterval(
 
 export function TimelineRuler({ totalFrames, frameRate, displayFormat, width, canvasScale, playheadFrame, showLabel, onSeek }: Readonly<TimelineRulerProps>) {
   const isDragging = useRef(false)
+
+  useEffect(() => {
+    return () => {
+      isDragging.current = false
+    }
+  }, [])
 
   function frameFromX(x: number): number {
     return Math.max(

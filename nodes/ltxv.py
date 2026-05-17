@@ -111,6 +111,6 @@ class LTXVAddGuidesFromBatchIndexes(LTXVAddGuide):
                     guide_latent_shape = list(t.shape[2:])  # [F, H, W]
                     positive, negative = _append_guide_attention_entry(positive, negative, pre_filter_count, guide_latent_shape, strength=strength)
                 else:
-                    print(f"Warning: Skipping guide at index {i} - conditioning frames exceed latent sequence length")
+                    logging.warning("Skipping guide at index %s - conditioning frames exceed latent sequence length", i)
 
         return io.NodeOutput(positive, negative, {"samples": latent_image, "noise_mask": noise_mask})

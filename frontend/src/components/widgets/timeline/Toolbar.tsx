@@ -143,7 +143,7 @@ export function Toolbar({
             onValueChange={(v) => onDisplayFormatChange(v as TimeDisplayFormat)}
           >
             <SelectTrigger className="h-6 w-10 text-xs">
-              {((displayFormat === 'frames' ? t('toolbar.frames') : t('toolbar.seconds')).substring(0, 1)).toLowerCase()}
+              {(displayFormat === 'frames' ? t('toolbar.frames') : t('toolbar.seconds')).substring(0, 1)}
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="frames">{t('toolbar.frames')}</SelectItem>

@@ -49,7 +49,7 @@ def silence(sr: int, duration_sec: float, channels: int = 2) -> torch.Tensor:
     return torch.zeros(1, channels, max(1, int(sr * duration_sec)))
 
 
-def trim_audio(audio, start_index, duration):
+def trim_audio(audio: dict, start_index: float, duration: float) -> dict:
     waveform = audio["waveform"]
     sample_rate = audio["sample_rate"]
     audio_length = waveform.shape[-1]

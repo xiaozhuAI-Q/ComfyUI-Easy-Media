@@ -3,12 +3,13 @@
 ## Commit Rules
 
 - **Separate commits by feature/responsibility**: Group changes by feature or responsibility area, not by file type alone. Example:
-  - `[backend: nodes] Add MediaLoader node` — all files for this feature (node class, utils, etc.)
-  - `[backend: utils] Extract FFmpeg helpers` — refactor shared utilities
-  - `[frontend: ImagePreview] Add thumbnail mode` — UI for a specific feature
-  - `[i18n: ImageLoader] Add zh-CN translations` — localization for a specific node/feature
+  - `feat: add MediaLoader node` — all files for this feature (node class, utils, etc.)
+  - `refactor: extract FFmpeg helpers` — refactor shared utilities
+  - `feat: add thumbnail mode to ImagePreview` — UI for a specific feature
+  - `feat: add zh-CN translations for ImageLoader` — localization for a specific node/feature
+- **dist directory commits separately**: Changes to the dist directory should not be mixed with other feature commits. After frontend builds, submit dist changes as a separate commit: `ci: update bundled frontend assets`
 - **Use `git diff` to guide grouping**: Before committing, run `git diff` to see all changes and group files that logically belong together into the same commit
-- **Frontend changes require build**: Before any git commit that modifies frontend code (`.tsx`, `.ts`, CSS, or assets), you MUST run `bun run build:release` first to update the bundled output in `dist/release`
+- **Frontend changes require build**: Before any git commit that modifies frontend code (`.tsx`, `.ts`, CSS, or assets), you MUST run `cd frontend && bun run build:release` first to update the bundled output in `dist/release`
 - Commit message format follows standard convention (see below)
 ```
 <type>: <description>
@@ -16,7 +17,7 @@
 <optional body>
 ```
 
-Types: feat, fix, refactor, docs, test, chore, perf, ci
+Type 使用: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `perf`, `ci`
 
 Note: Attribution disabled globally via ~/.claude/settings.json.
 

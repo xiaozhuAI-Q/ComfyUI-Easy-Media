@@ -1,0 +1,15 @@
+__pycache__
+.DS_Store
+node_modules/
+docs/
+*.cache
+*.ini
+*.bak
+*.bat
+*.log
+.env
+.vscode/
+.idea/
+.claude/skills/comfyui-node-*/
+!.claude/skills/comfyui-node-i18n/
+

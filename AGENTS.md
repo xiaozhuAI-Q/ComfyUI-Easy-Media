@@ -27,19 +27,6 @@ bun run build             # one-shot dev build → dist/dev
 bun run build:release     # production build → dist/release
 ```
 
-## Git Commit Rules
-
-**Before every `git commit`, you MUST run `bun run build:release` first** to ensure `dist/release` is up to date.
-
-Commit message format:
-- `feat:` new features
-- `fix:` bug fixes
-- `test:` test changes
-
-Add `Fixes #n` to PR descriptions when applicable.
-
----
-
 ## Code Style
 
 ### Backend

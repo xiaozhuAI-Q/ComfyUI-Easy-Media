@@ -527,6 +527,8 @@ class TimelineSegmentOutput(io.ComfyNode):
         segment_index = max(0, min(segment_index, len(segments) - 1))
         seg = segments[segment_index] if segments else {}
         seg_images = seg.get("images", [])
+        start_frame = seg.get("start_frame", 0)
+        end_frame = seg.get("end_frame", 0)
         no_images = len(seg_images) == 0
 
         raw_prompt = seg.get("prompt", "") or ""
@@ -551,10 +553,6 @@ class TimelineSegmentOutput(io.ComfyNode):
 
         # Calculate segment length (frame count)
         if seg_images:
-            first_img = seg_images[0]
-            last_img = seg_images[-1]
-            start_frame = int(first_img.get("start_frame", 0))
-            end_frame = int(last_img.get("end_frame", start_frame))
             segment_length = end_frame - start_frame
         elif segment_index < len(audio_segments):
             segment_length = int(audio_segments[segment_index].get("duration", 0.0) * frame_rate)

@@ -34,16 +34,16 @@ interface MaintainTrackProps {
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-/** Evenly distribute all segments across total span. */
+/** Evenly distribute all segments across total span. Extra frames go to front segments (前大后小). */
 function distributeEvenly(segs: Segment[], totalFrames: number): Segment[] {
   if (segs.length === 0) return segs
   const base = Math.floor(totalFrames / segs.length)
   const remainder = totalFrames % segs.length
 
   return segs.map((s, i) => {
-    const isExtra = i >= segs.length - remainder
+    const isExtra = i < remainder
     const size = base + (isExtra ? 1 : 0)
-    const start_frame = i * base + Math.max(0, i - (segs.length - remainder))
+    const start_frame = i * base + Math.min(i, remainder)
     const end_frame = i < segs.length - 1 ? start_frame + size - 1 : totalFrames - 1
     return { ...s, start_frame, end_frame }
   })

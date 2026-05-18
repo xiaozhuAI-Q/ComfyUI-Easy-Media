@@ -85,6 +85,7 @@ resolution_combo_options = [
 TYPE_TIMELINE = io.Custom(io_type="TIMELINE")
 TYPE_TIMELINE_INFO = io.Custom(io_type="TIMELINE_INFO")
 CATEGORY = "EasyUse/Media"
+PROMPT_FORMAT_OPTIONS = ["default", "promptRelay"]
 
 # ---------------------------------------------------------------------------
 # Node
@@ -398,7 +399,7 @@ class TimelineInfoOutput(io.ComfyNode):
                 TYPE_TIMELINE_INFO.Input("timeline_info"),
                 io.Combo.Input(
                     "prompt_format",
-                    options=["default", "promptRelay"],
+                    options=PROMPT_FORMAT_OPTIONS,
                     default="default",
                     tooltip="Choose prompt format. promptRelay formats prompts with frame ranges.",
                 ),
@@ -474,6 +475,12 @@ class TimelineSegmentOutput(io.ComfyNode):
             description="Output data for a specific segment from the timeline.",
             inputs=[
                 TYPE_TIMELINE_INFO.Input("timeline_info"),
+                io.Combo.Input(
+                    "prompt_format",
+                    options=PROMPT_FORMAT_OPTIONS,
+                    default="default",
+                    tooltip="Choose prompt format. promptRelay formats prompts with frame ranges.",
+                ),
                 io.Image.Input("images", optional=True),
                 io.Audio.Input("audio", optional=True),
                 io.Int.Input("segment_index", default=0, min=0),
@@ -489,7 +496,7 @@ class TimelineSegmentOutput(io.ComfyNode):
         )
 
     @classmethod
-    def execute(cls, timeline_info, segment_index, images=None, audio=None, **kwargs):
+    def execute(cls, timeline_info, prompt_format, segment_index, images=None, audio=None, **kwargs):
         if isinstance(timeline_info, str):
             try:
                 info = json.loads(timeline_info)
@@ -505,12 +512,25 @@ class TimelineSegmentOutput(io.ComfyNode):
         # Clamp index to valid range
         segment_index = max(0, min(segment_index, len(segments) - 1))
         seg = segments[segment_index] if segments else {}
-
-        prompt = seg.get("prompt", "")
-        seg_type_str = seg.get("type", "flf")
-        seg_type = TYPE_MAP.get(seg_type_str, 0)
         seg_images = seg.get("images", [])
         has_images = len(seg_images) > 0
+
+        raw_prompt = seg.get("prompt", "") or ""
+        if prompt_format == "promptRelay" and raw_prompt.strip():
+            parts = [p.strip() for p in raw_prompt.split("|") if p.strip()]
+            prompt_parts: list[str] = []
+            for i, p in enumerate(parts):
+                if i < len(seg_images):
+                    img = seg_images[i]
+                    img_start = img.get("start_frame")
+                    img_end = img.get("end_frame")
+                    if img_start is not None and img_end is not None:
+                        prompt_parts.append(f"{p} [{int(img_start)}-{int(img_end)}]")
+            prompt = " | ".join(prompt_parts)
+        else:
+            prompt = raw_prompt
+        seg_type_str = seg.get("type", "flf")
+        seg_type = TYPE_MAP.get(seg_type_str, 0)
 
         audio_segments = info.get("audio", {}).get("segments", [])
 
@@ -523,12 +543,7 @@ class TimelineSegmentOutput(io.ComfyNode):
                 images_out = images[offset:offset + num_seg_images]
             else:
                 images_out = images[offset:]
-            if num_seg_images >= 2 and seg_type == 0:
-                # For flf type with multiple images, take the first and last as start/end guides
-                images_out = torch.stack([images_out[0], images_out[-1]], dim=0)
-                images_indexes_str = f"{seg_images[0].get('start_frame', 0)},-1"
-            else:
-                images_indexes_str = ",".join(str(int(img.get("start_frame", 0))) for img in seg_images)
+            images_indexes_str = ",".join(str(int(img.get("start_frame", 0))) for img in seg_images)
         else:
             images_out = torch.zeros(1, height, width, 3)
             images_indexes_str = ""

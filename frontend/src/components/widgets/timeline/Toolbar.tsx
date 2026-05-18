@@ -69,8 +69,25 @@ export function Toolbar({
 
   function handleDurationChange(val: number) {
     if (val <= 0) return
-    const frames =
+    let frames =
       displayFormat === 'seconds' ? secondsToFrames(val, frameRate) : Math.round(val)
+
+    if (displayFormat === 'seconds') {
+      const currentFrames = selectedSegment
+        ? selectedSegment.end_frame - selectedSegment.start_frame + 1
+        : totalLength
+      if (frames === currentFrames) {
+        // val changed but didn't cross a frame boundary — step in the intended direction
+        const currentSec = framesToSeconds(currentFrames, frameRate)
+        if (val < currentSec) {
+          frames = Math.max(1, currentFrames - 4)
+        } else if (val > currentSec) {
+          frames = currentFrames + 4
+        } else {
+          return
+        }
+      }
+    }
 
     if (selectedSegment) {
       // Edit selected segment duration - other segments shift accordingly

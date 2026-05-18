@@ -500,7 +500,9 @@ export function EditPanel({
         )
         newStart = mid + 1
       }
-      const defaultSpan = Math.max(1, Math.floor(span / Math.max(updatedBlocks.length + 1, 1)))
+      const defaultSpan = updatedBlocks.length === 0
+        ? Math.max(1, Math.floor(span / 2))
+        : Math.max(1, Math.floor(span / (updatedBlocks.length + 1)))
       const newEnd = Math.min(span - 1, newStart + defaultSpan - 1)
       const newBlock: SubBlock = {
         id: String(updatedBlocks.length),

@@ -28,12 +28,16 @@ interface PromptTrackProps {
 /** Evenly distribute all segments across total span. */
 function distributeEvenly(segs: Segment[], totalFrames: number): Segment[] {
   if (segs.length === 0) return segs
-  const perSeg = Math.floor((totalFrames - 1) / segs.length)
-  return segs.map((s, i) => ({
-    ...s,
-    start_frame: i * perSeg,
-    end_frame: i < segs.length - 1 ? (i + 1) * perSeg - 1 : totalFrames - 1,
-  }))
+  const base = Math.floor((totalFrames - 1) / segs.length)
+  const remainder = (totalFrames - 1) % segs.length
+  let cursor = 0
+  return segs.map((s, i) => {
+    const size = base + (i < remainder ? 1 : 0)
+    const start_frame = cursor
+    cursor += size
+    const end_frame = i < segs.length - 1 ? cursor - 1 : totalFrames - 1
+    return { ...s, start_frame, end_frame }
+  })
 }
 
 export function PromptTrack({

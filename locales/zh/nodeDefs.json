@@ -70,6 +70,10 @@
         "name": "时间轴信息",
         "tooltip": "来自时间轴编辑器节点的时间轴信息。"
       },
+      "prompt_format": {
+        "name": "提示词格式",
+        "tooltip": "选择提示词格式。promptRelay 格式会添加帧范围。"
+      },
       "images": {
         "name": "图像",
         "tooltip": "来自时间轴编辑器节点的图像。"

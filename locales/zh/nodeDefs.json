@@ -108,6 +108,21 @@
       }
     }
   },
+  "easy timelineSegmentCount": {
+    "display_name": "时间轴片段总数",
+    "description": "输出时间轴中的片段总数。",
+    "inputs": {
+      "timeline_info": {
+        "name": "时间轴信息",
+        "tooltip": "来自时间轴编辑器节点的时间轴信息。"
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "总数"
+      }
+    }
+  },
   "easy imageIndexesToIntList": {
     "display_name": "图像索引转整数列表",
     "description": "将逗号分隔的图像索引字符串转换为整数列表。",

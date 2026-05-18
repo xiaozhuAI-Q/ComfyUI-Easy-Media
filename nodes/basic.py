@@ -590,6 +590,36 @@ class TimelineSegmentOutput(io.ComfyNode):
         )
 
 
+class TimelineSegmentCount(io.ComfyNode):
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="easy timelineSegmentCount",
+            display_name="Timeline Segment Count",
+            category=CATEGORY,
+            description="Output the total number of segments in the timeline.",
+            inputs=[
+                TYPE_TIMELINE_INFO.Input("timeline_info"),
+            ],
+            outputs=[
+                io.Int.Output("COUNT"),
+            ],
+        )
+
+    @classmethod
+    def execute(cls, timeline_info, **kwargs):
+        if isinstance(timeline_info, str):
+            try:
+                info = json.loads(timeline_info)
+            except (json.JSONDecodeError, ValueError):
+                info = {}
+        else:
+            info = dict(timeline_info) if timeline_info else {}
+
+        count: int = len(info.get("segments", []))
+        return io.NodeOutput(count)
+
+
 class ImageIndexesToIntList(io.ComfyNode):
     @classmethod
     def define_schema(cls):

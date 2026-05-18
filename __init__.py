@@ -6,7 +6,7 @@ import nodes as _nodes
 from typing_extensions import override
 from comfy_api.latest import ComfyExtension, io
 from aiohttp import web
-from .nodes import TimelineEditor, TimelineInfoOutput, TimelineSegmentOutput, ImageIndexesToIntList, LTXVAddGuidesFromBatchIndexes
+from .nodes import TimelineEditor, TimelineInfoOutput, TimelineSegmentOutput, TimelineSegmentCount, ImageIndexesToIntList, LTXVAddGuidesFromBatchIndexes
 from .routes import *
 
 # Define the path
@@ -49,6 +49,7 @@ class EasyMediaExtension(ComfyExtension):
             TimelineEditor,
             TimelineInfoOutput,
             TimelineSegmentOutput,
+            TimelineSegmentCount,
             ImageIndexesToIntList,
             # LTXV
             LTXVAddGuidesFromBatchIndexes,

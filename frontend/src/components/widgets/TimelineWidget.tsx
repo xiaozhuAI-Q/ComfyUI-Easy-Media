@@ -75,7 +75,7 @@ function syncOneAudio(
   }
 }
 
-export function TimelineWidget({ value, onChange, app }: Readonly<ReactWidgetProps<TimelineData>>) {
+export function TimelineWidget({ value, onChange, app, node }: Readonly<ReactWidgetProps<TimelineData>>) {
   const data = ensureDefaults(value)
   const [displayFormat, setDisplayFormat] = useState<TimeDisplayFormat>('seconds')
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -102,6 +102,10 @@ export function TimelineWidget({ value, onChange, app }: Readonly<ReactWidgetPro
   // Always-current ref for data so the RAF loop never has a stale closure
   const dataRef = useRef(data)
   useEffect(() => { dataRef.current = data })
+
+  // Ref to keep keyboard handler up-to-date without re-registration
+  const isPlayingRef = useRef(isPlaying)
+  useEffect(() => { isPlayingRef.current = isPlaying }, [isPlaying])
 
   // Measure scroll container width
   useLayoutEffect(() => {
@@ -375,6 +379,21 @@ export function TimelineWidget({ value, onChange, app }: Readonly<ReactWidgetPro
     })
     updateSegments(maintainTrack.id, updated)
   }
+
+  // Keyboard shortcut: Space toggles play/pause when this node is selected
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (!node?.selected) return
+      if (e.code !== 'Space' && e.key !== ' ') return
+      const tag = (e.target as HTMLElement)?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return
+      e.preventDefault()
+      e.stopImmediatePropagation()
+      handlePlayPause()
+    }
+    window.addEventListener('keydown', handleKeyDown, true)
+    return () => window.removeEventListener('keydown', handleKeyDown, true)
+  }, [node]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleGlobalClick(e: React.MouseEvent) {
     const target = e.target as HTMLElement

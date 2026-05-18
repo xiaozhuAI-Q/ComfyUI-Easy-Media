@@ -12,6 +12,7 @@
 - [x] 6.补充音频轨道的简易裁切
 - [x] 7.补充 example_workflows（先完成 LTX2.3 PromptRelay的示例工作流编写）
 - [x] 8.完成 工作流 测试，提交预发布代码
+- [x] 9.修复音频加载兼容性问题（目前torchaudio 新版本把 torchcodec 作为默认导致无法正确加载音频文件）
 
 ## 初始化
 

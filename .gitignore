@@ -15,3 +15,5 @@ config.yaml
 .worktrees/
 .claude/skills/comfyui-node-*/
 !.claude/skills/comfyui-node-i18n/
+superpowers/
+docs/superpowers/

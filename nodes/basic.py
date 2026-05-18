@@ -280,9 +280,10 @@ class TimelineEditor(io.ComfyNode):
                 end_sec = frames_to_seconds(end, frame_rate)
                 duration_sec = max(0.0, end_sec - start_sec)
 
-                # Silence gap before this segment
-                if start_sec > prev_end_sec + 1e-6:
-                    track_parts.append(silence(default_sr, start_sec - prev_end_sec, channels))
+                # Trim offset: how far into the source audio this segment starts
+                origin_start = int(seg.get("origin_start_frame", start))
+                # Use plain frame-count division (not frames_to_seconds which applies a -1 offset for indices)
+                trim_offset_sec = max(0.0, (start - origin_start) / frame_rate) if start > origin_start else 0.0
 
                 content = seg.get("content", {})
                 waveform = load_audio_waveform(
@@ -293,9 +294,21 @@ class TimelineEditor(io.ComfyNode):
                     default_sr,
                 )
 
+                # Determine channel count from loaded audio before adding gap silence,
+                # so the silence tensor has matching channels and torch.cat won't fail.
                 if waveform is not None:
                     channels = waveform.shape[1]
+
+                # Silence gap before this segment (inserted after channel count is known)
+                if start_sec > prev_end_sec + 1e-6:
+                    track_parts.append(silence(default_sr, start_sec - prev_end_sec, channels))
+
+                if waveform is not None:
                     wav = waveform[0]  # [C,T]
+                    # Apply trim offset — skip samples from the start of the source
+                    if trim_offset_sec > 0.0:
+                        offset_samples = int(default_sr * trim_offset_sec)
+                        wav = wav[:, offset_samples:]
                     target_samples = max(1, int(default_sr * duration_sec))
                     if wav.shape[-1] > target_samples:
                         wav = wav[:, :target_samples]

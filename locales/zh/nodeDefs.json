@@ -1,4 +1,86 @@
 {
+  "easy saveVideo": {
+    "display_name": "保存视频",
+    "description": "将图像和可选音频保存为视频文件，同时输出 VIDEO 供下游节点使用及完整文件路径。",
+    "inputs": {
+      "input_mode": {
+        "name": "输入模式",
+        "options": {
+          "images+audio": "图像 + 音频",
+          "video": "视频"
+        }
+      },
+      "images": {
+        "name": "图像"
+      },
+      "fps": {
+        "name": "帧率"
+      },
+      "audio": {
+        "name": "音频"
+      },
+      "video": {
+        "name": "视频"
+      },
+      "output_mode": {
+        "name": "输出模式",
+        "options": {
+          "save": "保存",
+          "preview_only": "仅预览"
+        }
+      },
+      "filename_prefix": {
+        "name": "文件名前缀"
+      },
+      "save_metadata": {
+        "name": "保存元数据",
+        "tooltip": "将 ComfyUI 提示词/工作流元数据写入保存的文件。"
+      },
+      "audio": {
+        "name": "音频"
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "视频"
+      },
+      "1": {
+        "name": "文件路径"
+      }
+    }
+  },
+  "easy mergeVideosFromPaths": {
+    "display_name": "从路径合并视频",
+    "description": "从文件路径或 URL 列表加载并按顺序拼接视频。支持 ComfyUI temp/output 文件名、绝对本地路径和 HTTP(S) URL。所有片段必须具有相同的帧率、分辨率和音频配置。",
+    "inputs": {
+      "paths": {
+        "name": "路径列表",
+        "tooltip": "每行一个路径（或逗号分隔）。支持 ComfyUI output/temp 文件名、绝对路径或 URL。"
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "视频"
+      }
+    }
+  },
+  "easy mergeVideos": {
+    "display_name": "合并视频",
+    "description": "按顺序拼接多个兼容的 VIDEO 片段。所有片段必须具有相同的帧率、分辨率和音频配置。",
+    "inputs": {
+      "video_1": {
+        "name": "视频 1"
+      },
+      "video_2": {
+        "name": "视频 2"
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "视频"
+      }
+    }
+  },
   "easy timelineEditor": {
     "display_name": "时间轴编辑器",
     "description": "加载时间轴媒体项目（提示词、图像、音频轨道）并输出结构化数据。",

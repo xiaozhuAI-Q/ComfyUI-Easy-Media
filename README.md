@@ -10,11 +10,26 @@ A ComfyUI custom node package for streamlined media loading and video pipeline a
 
 <table>
     <tr>
-        <td><pre style="height:130px;"><br><br>Code is coming soon~<br>May your tokens be inexhaustible.</pre></td>
+        <td><pre style="height:150px;"><br>Code is being continuously updated~<br>May your tokens be inexhaustible.</pre></td>
         <td><img src="https://pbs.twimg.com/media/HHvOkkraMAAoT0o?format=jpg&name=medium" height="150"></td>
     </tr>
 </table>
 
+
+## Installation
+
+The code has not yet been added to the registry; currently, only manual installation is supported:
+
+```bash
+cd Your_ComfyUI_Path/custom_nodes
+git clone https://github.com/yolain/ComfyUI-Easy-Media.git
+```
+
+Then restart ComfyUI.
+
+## Example Workflows
+
+After installing, open ComfyUI and find the bundled example workflows in the **Templates** panel on the left sidebar — look for entries under **ComfyUI-Easy-Media**.
 
 ## Roadmap 2026
 
@@ -24,6 +39,7 @@ A ComfyUI custom node package for streamlined media loading and video pipeline a
 | May 17-18 🚩     | Pre-release & Debug    | -       |
 | May 13-16        | Development            | -       |
 | May 11-12        | Architecture Design    | -       |
+
 
 
 ## Features
@@ -43,3 +59,10 @@ The editor can be used for single video segment generation (e.g., combined with 
 | Audio Track | Can load multiple audio segments, merged for final export |
 
 
+### MultiTrack Editor
+
+> Planned...
+
+### SaveVideo Advanced
+
+> Planned... Integrate the video saving node from the SaveVideoRGBA node package and enhance its functionality.

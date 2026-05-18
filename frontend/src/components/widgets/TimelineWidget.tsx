@@ -52,7 +52,9 @@ function syncOneAudio(
 
   // Seek audio to the correct position when frame changes
   if (frame !== lastSyncedFrame.current) {
-    const audioFrame = frame - seg.start_frame
+    // Use origin_start_frame so trimming the left edge plays from the right offset in the file
+    const originStart = seg.origin_start_frame ?? seg.start_frame
+    const audioFrame = frame - originStart
     const audioTime = audioFrame / frameRate
     // Only seek if the difference is significant (> 100ms) to avoid jitter
     if (Math.abs(audio.currentTime - audioTime) > 0.1) {

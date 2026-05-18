@@ -125,7 +125,7 @@ export function AudioTrack({
           start_frame: segStart,
           end_frame: segEnd,
           origin_start_frame: segStart,
-          origin_end_frame: segEnd,
+          origin_end_frame: cursor + actualFrames - 1,
           content: isUrl
             ? { source_type: 'url', url: filePath, file_name: fileName }
             : { source_type: 'input', file_path: filePath, file_name: fileName },
@@ -224,7 +224,7 @@ export function AudioTrack({
           start_frame: cursor,
           end_frame: dropEnd,
           origin_start_frame: cursor,
-          origin_end_frame: dropEnd,
+          origin_end_frame: cursor + actualFrames - 1,
           content: {
             source_type: 'input',
             file_path: fileName,
@@ -259,6 +259,7 @@ export function AudioTrack({
       newStart = Math.min(newStart, seg.end_frame - 1)
     } else {
       newEnd = Math.min(originEnd, seg.end_frame + deltaFrames)
+      newEnd = Math.min(newEnd, totalFrames - 1)
       const next = others.find((s) => s.start_frame > seg.start_frame)
       if (next) newEnd = Math.min(newEnd, next.start_frame - 1)
       newEnd = Math.max(newEnd, seg.start_frame + 1)

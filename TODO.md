@@ -10,8 +10,8 @@
 - [x] 4.完善推送代码前的review
 - [x] 5.补充本地化的初始配置
 - [x] 6.补充音频轨道的简易裁切
-- [ ] 7.补充 example_workflows（先完成 LTX2.3 PromptRelay的示例工作流编写）
-- [ ] 8.完成 工作流 测试，提交预发布代码
+- [x] 7.补充 example_workflows（先完成 LTX2.3 PromptRelay的示例工作流编写）
+- [x] 8.完成 工作流 测试，提交预发布代码
 
 ## 初始化
 

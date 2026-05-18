@@ -1,9 +1,6 @@
 import { addStylesheet } from "@/lib/add-stylesheet";
 import type { ComfyApp } from '@comfyorg/comfyui-frontend-types'
 import type { TimelineData } from '@/types/timeline'
-// import { createDefaultTimelineData } from '@/lib/timeline-utils'
-// import { TimelineWidget } from '@/components/widgets'
-// import { createReactWidget } from '@/lib/create-react-widget'
 
 declare global {
   // eslint-disable-next-line no-var

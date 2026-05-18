@@ -10,11 +10,26 @@
 
 <table>
     <tr>
-        <td><pre style="height:130px;"><br><br>代码正蜂拥而至～<br>愿您的词元取之不尽，用之不竭。</pre></td>
+        <td><pre style="height:150px;"><br><br>代码正蜂拥而至～<br>愿您的词元取之不尽，用之不竭。</pre></td>
         <td><img src="https://pbs.twimg.com/media/HHvOkkraMAAoT0o?format=jpg&name=medium" height="150"></td>
     </tr>
 </table>
 
+
+## 安装
+
+代码还没有上注册表，目前仅支持手动安装：
+
+```bash
+cd 你的ComfyUI路径/custom_nodes
+git clone https://github.com/yolain/ComfyUI-Easy-Media.git
+```
+
+然后重启 ComfyUI 即可。
+
+## 示例工作流
+
+安装完成后，打开 ComfyUI，在左侧侧边栏的 **Templates（模板）** 面板中即可找到内置的示例工作流，查找 **ComfyUI-Easy-Media** 相关条目。
 
 ## 路线图 2026
 
@@ -41,3 +56,12 @@
 | -------------- | ---------------------- | 
 | 主轨  | 支持图像与提示词多片段编辑 |
 | 音频轨  | 可加载多段音频文件，最终合并导出 |
+
+
+### 多轨道音视频编辑器 MultiTrack Editor
+
+> 规划中...
+
+### 保存视频先进 SaveVideo Advanced
+
+> 规划中...将SaveVideoRGBA节点包的视频保存节点整合进来，并进行功能完善。

@@ -17,7 +17,7 @@
 <optional body>
 ```
 
-Type 使用: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `perf`, `ci`
+Type: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `perf`, `ci`
 
 Note: Attribution disabled globally via ~/.claude/settings.json.
 

@@ -501,7 +501,7 @@ class TimelineSegmentOutput(io.ComfyNode):
             outputs=[
                 io.String.Output("PROMPT"),
                 io.Int.Output("TYPE"),
-                io.Boolean.Output("HAS_IMAGES"),
+                io.Boolean.Output("NO_IMAGES"),
                 io.String.Output("IMAGE_INDEXES"),
                 io.Image.Output("IMAGES"),
                 io.Audio.Output("AUDIO"),
@@ -526,7 +526,7 @@ class TimelineSegmentOutput(io.ComfyNode):
         segment_index = max(0, min(segment_index, len(segments) - 1))
         seg = segments[segment_index] if segments else {}
         seg_images = seg.get("images", [])
-        has_images = len(seg_images) > 0
+        no_images = len(seg_images) == 0
 
         raw_prompt = seg.get("prompt", "") or ""
         if prompt_format == "promptRelay" and raw_prompt.strip():
@@ -583,7 +583,7 @@ class TimelineSegmentOutput(io.ComfyNode):
         return io.NodeOutput(
             prompt,
             seg_type,
-            has_images,
+            no_images,
             images_indexes_str,
             images_out,
             audio_out,

@@ -122,6 +122,7 @@ function CombinedEditor({
   const t = useT()
   const ref = useRef<HTMLDivElement>(null)
   const composing = useRef(false)
+  const isFocused = useRef(false)
   const segmentsRef = useRef(segments)
   segmentsRef.current = segments
 
@@ -139,6 +140,22 @@ function CombinedEditor({
       ref.current.focus()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // ComfyUI's keybindHandler is registered on `window` in bubble phase.
+  // `document` bubble fires BEFORE `window` bubble — so our listener here
+  // is guaranteed to run first and can stop ComfyUI from receiving the event.
+  useEffect(() => {
+    function interceptShortcut(e: KeyboardEvent) {
+      if (!isFocused.current) return
+      if (!(e.ctrlKey || e.metaKey)) return
+      const k = e.key.toLowerCase()
+      if (k === 'c' || k === 'x' || k === 'v' || k === 'a') {
+        e.stopImmediatePropagation()
+      }
+    }
+    document.addEventListener('keydown', interceptShortcut)
+    return () => document.removeEventListener('keydown', interceptShortcut)
   }, [])
 
   const handleInput = useCallback(() => {
@@ -171,6 +188,15 @@ function CombinedEditor({
         spellCheck={false}
         className="flex-1 min-h-0 overflow-y-auto p-3 rounded-md border border-input bg-background text-sm leading-relaxed outline-none focus-visible:ring-2 focus-visible:ring-ring whitespace-pre-wrap wrap-break-word"
         onInput={handleInput}
+        onFocus={() => {
+          isFocused.current = true
+          // Deselect ComfyUI nodes so that even if the keybinding fires,
+          // canvas.selectedItems.size === 0 and nothing gets copied.
+          try {
+            ;(globalThis as any).comfyAPI?.app?.app?.canvas?.deselectAll?.()
+          } catch { /* ignore */ }
+        }}
+        onBlur={() => { isFocused.current = false }}
         onCompositionStart={() => {
           composing.current = true
         }}

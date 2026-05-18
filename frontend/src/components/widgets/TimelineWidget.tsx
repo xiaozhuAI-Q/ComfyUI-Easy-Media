@@ -385,8 +385,12 @@ export function TimelineWidget({ value, onChange, app, node }: Readonly<ReactWid
     function handleKeyDown(e: KeyboardEvent) {
       if (!node?.selected) return
       if (e.code !== 'Space' && e.key !== ' ') return
-      const tag = (e.target as HTMLElement)?.tagName
+      const target = e.target as HTMLElement
+      const tag = target?.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA') return
+      // Also skip when focus is inside a contentEditable element or a dialog
+      if (target?.isContentEditable) return
+      if (target?.closest('[role="dialog"]')) return
       e.preventDefault()
       e.stopImmediatePropagation()
       handlePlayPause()

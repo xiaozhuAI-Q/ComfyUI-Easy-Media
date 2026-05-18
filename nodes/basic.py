@@ -553,7 +553,7 @@ class TimelineSegmentOutput(io.ComfyNode):
 
         # Calculate segment length (frame count)
         if seg_images:
-            segment_length = end_frame - start_frame
+            segment_length = end_frame - start_frame + 1
         elif segment_index < len(audio_segments):
             segment_length = int(audio_segments[segment_index].get("duration", 0.0) * frame_rate)
         else:

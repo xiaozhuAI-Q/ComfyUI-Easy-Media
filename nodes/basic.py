@@ -349,7 +349,7 @@ class TimelineEditor(io.ComfyNode):
             if i < len(maintain_segs) - 1:
                 end_sec = maintain_segs[i + 1]["start_frame"] / frame_rate
             else:
-                end_sec = seg["end_frame"] / frame_rate
+                end_sec = min(seg["end_frame"], total_length - 1) / frame_rate
             audio_seg_info.append({
                 "start_sec": round(start_sec, 4),
                 "end_sec": round(end_sec, 4),

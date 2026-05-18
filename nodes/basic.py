@@ -503,6 +503,7 @@ class TimelineSegmentOutput(io.ComfyNode):
                 io.Int.Output("TYPE"),
                 io.Boolean.Output("NO_IMAGES"),
                 io.String.Output("IMAGE_INDEXES"),
+                io.Int.Output("LENGTH"),
                 io.Image.Output("IMAGES"),
                 io.Audio.Output("AUDIO"),
             ],
@@ -546,6 +547,19 @@ class TimelineSegmentOutput(io.ComfyNode):
         seg_type = TYPE_MAP.get(seg_type_str, 0)
 
         audio_segments = info.get("audio", {}).get("segments", [])
+        frame_rate = info.get("frame_rate", 30)
+
+        # Calculate segment length (frame count)
+        if seg_images:
+            first_img = seg_images[0]
+            last_img = seg_images[-1]
+            start_frame = int(first_img.get("start_frame", 0))
+            end_frame = int(last_img.get("end_frame", start_frame))
+            segment_length = end_frame - start_frame
+        elif segment_index < len(audio_segments):
+            segment_length = int(audio_segments[segment_index].get("duration", 0.0) * frame_rate)
+        else:
+            segment_length = 0
 
         # Output images from segment (based on images array in segment)
         num_seg_images = len(seg_images)
@@ -585,6 +599,7 @@ class TimelineSegmentOutput(io.ComfyNode):
             seg_type,
             no_images,
             images_indexes_str,
+            segment_length,
             images_out,
             audio_out,
         )

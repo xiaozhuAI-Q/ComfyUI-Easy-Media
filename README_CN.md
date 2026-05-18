@@ -57,11 +57,12 @@ git clone https://github.com/yolain/ComfyUI-Easy-Media.git
 | 主轨  | 支持图像与提示词多片段编辑 |
 | 音频轨  | 可加载多段音频文件，最终合并导出 |
 
+### 保存视频 SaveVideo
+
+> 已整合 SaveVideoRGBA 节点包的视频保存节点，并进行了功能完善。支持视频批量导出，可自定义输出路径、文件名前缀、帧率等参数。
+
 
 ### 多轨道音视频编辑器 MultiTrack Editor
 
 > 规划中...
 
-### 保存视频先进 SaveVideo Advanced
-
-> 规划中...将SaveVideoRGBA节点包的视频保存节点整合进来，并进行功能完善。

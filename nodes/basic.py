@@ -619,7 +619,6 @@ class TimelineSegmentCount(io.ComfyNode):
         count: int = len(info.get("segments", []))
         return io.NodeOutput(count)
 
-
 class ImageIndexesToIntList(io.ComfyNode):
     @classmethod
     def define_schema(cls):

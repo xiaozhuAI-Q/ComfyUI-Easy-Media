@@ -58,11 +58,12 @@ The editor can be used for single video segment generation (e.g., combined with 
 | Main Track | Supports multi-segment editing with images and prompts |
 | Audio Track | Can load multiple audio segments, merged for final export |
 
+### SaveVideo
+
+> Integrated and enhanced the video saving node from the SaveVideoRGBA node package. Supports batch video export with customizable output path, filename prefix, frame rate, and other parameters.
 
 ### MultiTrack Editor
 
 > Planned...
 
-### SaveVideo Advanced
 
-> Planned... Integrate the video saving node from the SaveVideoRGBA node package and enhance its functionality.

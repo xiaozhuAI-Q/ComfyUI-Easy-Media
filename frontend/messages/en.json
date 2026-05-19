@@ -50,7 +50,11 @@
     "editMarker": "Edit marker",
     "markerLabelInput": "Marker label",
     "placeholder": "Audio Track",
-    "placeholderHint": "Double-click to add content"
+    "placeholderHint": "Double-click to add content",
+    "dropZone": "Audio track drop zone",
+    "selectMedia": "Select audio",
+    "contextAdd": "Add segment",
+    "contextDelete": "Delete segment"
   },
   "imageTrack": {
     "dropZone": "Image track drop zone",

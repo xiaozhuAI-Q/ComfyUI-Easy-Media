@@ -50,7 +50,11 @@
     "editMarker": "编辑标记",
     "markerLabelInput": "标记名称",
     "placeholder": "音频轨道",
-    "placeholderHint": "双击可添加内容"
+    "placeholderHint": "双击可添加内容",
+    "dropZone": "音频轨道拖放区域",
+    "selectMedia": "选择音频",
+    "contextAdd": "添加片段",
+    "contextDelete": "删除片段"
   },
   "imageTrack": {
     "dropZone": "图片轨道拖放区域",

@@ -59,7 +59,8 @@ git clone https://github.com/yolain/ComfyUI-Easy-Media.git
 
 ### 保存视频 SaveVideo
 
-> 已整合 SaveVideoRGBA 节点包的视频保存节点，并进行了功能完善。支持视频批量导出，可自定义输出路径、文件名前缀、帧率等参数。
+![保存视频](https://github.com/user-attachments/assets/acf75fae-88ea-450d-8171-cb655bb99420)
+> 已整合 SaveVideoRGBA 节点包的视频保存节点，并进行了功能完善。支持视频导出，可自定义输出路径、文件名前缀、帧率等参数。
 
 
 ### 多轨道音视频编辑器 MultiTrack Editor

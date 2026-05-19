@@ -60,7 +60,8 @@ The editor can be used for single video segment generation (e.g., combined with 
 
 ### SaveVideo
 
-> Integrated and enhanced the video saving node from the SaveVideoRGBA node package. Supports batch video export with customizable output path, filename prefix, frame rate, and other parameters.
+![SaveVideo](https://github.com/user-attachments/assets/acf75fae-88ea-450d-8171-cb655bb99420)
+> Integrated and enhanced the video saving node from the SaveVideoRGBA node package. Supports video export with customizable output path, filename prefix, frame rate, and other parameters.
 
 ### MultiTrack Editor
 

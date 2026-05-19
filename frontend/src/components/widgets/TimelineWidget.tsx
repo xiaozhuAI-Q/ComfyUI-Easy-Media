@@ -357,47 +357,20 @@ export function TimelineWidget({ value, onChange, app, node }: Readonly<ReactWid
     const oldDuration = seg.end_frame - seg.start_frame + 1
     if (newDuration === oldDuration) return
 
-    const delta = newDuration - oldDuration
-    // Clamp: the segment's end cannot exceed totalLength - 1
-    const newEnd = Math.min(data.total_length - 1, seg.end_frame + delta)
-    const newStart = Math.max(0, newEnd - newDuration + 1)
+    const updated = [...segments]
+    const next = updated[idx + 1]
 
-    // Shift subsequent segments
-    const updated = segments.map((s, i) => {
-      if (i === idx) {
-        return { ...s, start_frame: newStart, end_frame: newEnd }
-      } else if (i > idx) {
-        // Shift by remaining delta
-        const shift = (newEnd - seg.end_frame) + (i - idx - 1)
-        return {
-          ...s,
-          start_frame: Math.min(data.total_length - 1, s.start_frame + shift),
-          end_frame: Math.min(data.total_length - 1, s.end_frame + shift),
-        }
-      }
-      return s
-    })
+    // Adjacent principle: resize the current segment's end frame and adjust
+    // the next segment's start frame to stay contiguous — same as drag-resize.
+    const maxEnd = next ? next.end_frame - 1 : data.total_length - 1
+    const minEnd = seg.start_frame // at least 1 frame
+    const newEnd = Math.max(minEnd, Math.min(maxEnd, seg.start_frame + newDuration - 1))
+
+    updated[idx] = { ...seg, end_frame: newEnd }
+    if (next) updated[idx + 1] = { ...next, start_frame: newEnd + 1 }
+
     updateSegments(maintainTrack.id, updated)
   }
-
-  // Keyboard shortcut: Space toggles play/pause when this node is selected
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (!node?.selected) return
-      if (e.code !== 'Space' && e.key !== ' ') return
-      const target = e.target as HTMLElement
-      const tag = target?.tagName
-      if (tag === 'INPUT' || tag === 'TEXTAREA') return
-      // Also skip when focus is inside a contentEditable element or a dialog
-      if (target?.isContentEditable) return
-      if (target?.closest('[role="dialog"]')) return
-      e.preventDefault()
-      e.stopImmediatePropagation()
-      handlePlayPause()
-    }
-    window.addEventListener('keydown', handleKeyDown, true)
-    return () => window.removeEventListener('keydown', handleKeyDown, true)
-  }, [node]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleGlobalClick(e: React.MouseEvent) {
     const target = e.target as HTMLElement

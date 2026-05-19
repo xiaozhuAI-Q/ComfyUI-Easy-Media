@@ -161,3 +161,39 @@ def ffmpeg_concat(
             os.unlink(list_path)
         except OSError:
             pass
+
+
+def ffmpeg_replace_audio(
+    video_path: str,
+    audio_path: str,
+    output_path: str,
+) -> bool:
+    """Replace (or add) the audio track of a video file using FFmpeg stream copy.
+
+    The video stream is always stream-copied (no re-encode). The audio is
+    encoded to AAC. The output is trimmed to the shortest stream.
+
+    Returns True on success, False if FFmpeg is not installed.
+    Raises RuntimeError if FFmpeg is available but the operation fails.
+    """
+    ffmpeg = shutil.which("ffmpeg")
+    if not ffmpeg:
+        return False
+
+    cmd = [
+        ffmpeg, "-y",
+        "-i", video_path,
+        "-i", audio_path,
+        "-c:v", "copy",
+        "-c:a", "aac",
+        "-map", "0:v:0",
+        "-map", "1:a:0",
+        "-shortest",
+        output_path,
+    ]
+    result = subprocess.run(cmd, capture_output=True)
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"FFmpeg replace-audio failed:\n{result.stderr.decode(errors='replace')[-600:]}"
+        )
+    return True

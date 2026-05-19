@@ -14,7 +14,7 @@ from comfy_api.latest import Input, InputImpl, Types, io, ui
 from comfy.utils import ProgressBar
 from server import PromptServer
 
-from ..utils.video import extract_merge_spec, ffmpeg_concat, normalize_video_images, validate_merge_compatibility
+from ..utils.video import extract_merge_spec, ffmpeg_concat, ffmpeg_replace_audio, normalize_video_images, validate_merge_compatibility
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +48,7 @@ _INPUT_MODE_OPTIONS = [
         "video",
         [
             io.Video.Input("video"),
+            io.Audio.Input("audio", optional=True),
         ],
     ),
 ]
@@ -92,6 +93,9 @@ class EasySaveVideo(io.ComfyNode):
             source_video = input_mode.get("video")
             if source_video is None:
                 raise ValueError("A VIDEO input is required when input_mode is 'video'.")
+            audio = input_mode.get("audio", None)
+            if audio is not None:
+                source_video = _replace_video_audio(source_video, audio)
         else:
             images = input_mode.get("images", None)
             if images is None:
@@ -153,6 +157,86 @@ class EasySaveVideo(io.ComfyNode):
             ui=ui.PreviewVideo([ui.SavedResult(file, subfolder, folder_type)]),
         )
 
+def _save_audio_to_temp_wav(audio: dict) -> str | None:
+    """Serialize a ComfyUI audio dict to a temp WAV file.
+
+    Returns the file path on success, None if the audio cannot be serialized.
+    """
+    waveform = audio.get("waveform")
+    sample_rate = audio.get("sample_rate")
+    if waveform is None or sample_rate is None:
+        return None
+    # waveform: [batch, channels, samples] — take first batch item
+    if waveform.dim() == 3:
+        waveform = waveform[0]
+    try:
+        import torchaudio  # type: ignore[import]
+        tmp_fd, tmp_path = tempfile.mkstemp(suffix=".wav", dir=folder_paths.get_temp_directory())
+        os.close(tmp_fd)
+        torchaudio.save(tmp_path, waveform.cpu().float(), int(sample_rate))
+        return tmp_path
+    except Exception:
+        pass
+    try:
+        import soundfile as sf  # type: ignore[import]
+        tmp_fd, tmp_path = tempfile.mkstemp(suffix=".wav", dir=folder_paths.get_temp_directory())
+        os.close(tmp_fd)
+        sf.write(tmp_path, waveform.cpu().float().numpy().T, int(sample_rate))
+        return tmp_path
+    except Exception:
+        return None
+
+
+def _replace_video_audio(source_video, audio: dict):
+    """Replace the audio track of *source_video* with *audio*.
+
+    Fast path: save video to temp file, write audio to temp WAV, mux with
+    FFmpeg (stream-copy video, no re-encode).  Falls back to the tensor-based
+    approach when FFmpeg is unavailable or the mux fails.
+    """
+    # --- Fast path: FFmpeg mux (stream copy for video) ---
+    ext = Types.VideoContainer.get_extension(Types.VideoContainer.AUTO)
+    tmp_fd_v, tmp_video_path = tempfile.mkstemp(suffix=f".{ext}", dir=folder_paths.get_temp_directory())
+    os.close(tmp_fd_v)
+    tmp_fd_o, tmp_out_path = tempfile.mkstemp(suffix=f".{ext}", dir=folder_paths.get_temp_directory())
+    os.close(tmp_fd_o)
+    tmp_audio_path: str | None = None
+    try:
+        source_video.save_to(tmp_video_path, format=Types.VideoContainer.AUTO, codec=Types.VideoCodec.AUTO)
+        tmp_audio_path = _save_audio_to_temp_wav(audio)
+        if tmp_audio_path is not None:
+            try:
+                success = ffmpeg_replace_audio(tmp_video_path, tmp_audio_path, tmp_out_path)
+                if success:
+                    return InputImpl.VideoFromFile(tmp_out_path)
+            except RuntimeError as exc:
+                logger.warning(
+                    "[EasySaveVideo] FFmpeg audio replace failed: %s — falling back to tensor merge.", exc
+                )
+    except Exception as exc:
+        logger.warning(
+            "[EasySaveVideo] FFmpeg fast path error: %s — falling back to tensor merge.", exc
+        )
+    finally:
+        for p in (tmp_video_path, tmp_audio_path):
+            if p:
+                try:
+                    os.unlink(p)
+                except OSError:
+                    pass
+        # tmp_out_path is kept on success (VideoFromFile holds a ref); clean up only on failure
+        # (it lives in temp dir and will be cleaned up by ComfyUI)
+
+    # --- Slow fallback: tensor-based ---
+    spec = extract_merge_spec(source_video)
+    components = source_video.get_components()
+    return InputImpl.VideoFromComponents(
+        Types.VideoComponents(
+            images=components.images,
+            audio=audio,
+            frame_rate=spec.fps,
+        )
+    )
 
 class EasyMergeVideos(io.ComfyNode):
     @classmethod

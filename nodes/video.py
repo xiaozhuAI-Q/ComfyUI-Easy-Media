@@ -24,7 +24,6 @@ _OUTPUT_MODE_OPTIONS = [
     io.DynamicCombo.Option(
         "save",
         [
-            io.String.Input("filename_prefix", default="ComfyUI"),
             io.Boolean.Input(
                 "save_metadata",
                 default=False,
@@ -68,6 +67,7 @@ class EasySaveVideo(io.ComfyNode):
             inputs=[
                 io.DynamicCombo.Input("input_mode", options=_INPUT_MODE_OPTIONS),
                 io.DynamicCombo.Input("output_mode", options=_OUTPUT_MODE_OPTIONS),
+                io.String.Input("filename_prefix", default="ComfyUI"),
             ],
             hidden=[io.Hidden.prompt, io.Hidden.extra_pnginfo],
             is_output_node=True,
@@ -82,11 +82,11 @@ class EasySaveVideo(io.ComfyNode):
         cls,
         input_mode: dict,
         output_mode: dict,
+        filename_prefix:str,
     ) -> io.NodeOutput:
         input_mode_key: str = input_mode.get("input_mode", "images+audio")
         output_mode_key: str = output_mode.get("output_mode", "save")
         only_preview = output_mode_key == "preview_only"
-        filename_prefix: str = output_mode.get("filename_prefix", "ComfyUI")
         save_metadata: bool = output_mode.get("save_metadata", False)
 
         if input_mode_key == "video":

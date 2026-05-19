@@ -45,47 +45,12 @@ function escHtml(str: string): string {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;')
-    .replaceAll('\n', '<br>')
 }
 
-function buildCombinedHtml(rawParts: string[]): string {
+function buildHighlightHtml(raw: string): string {
   const sep =
     '<span style="color:var(--highlight);padding:0 4px;font-weight:700" data-pipe="1">|</span>'
-  return rawParts.map(escHtml).join(sep)
-}
-
-function getCursorOffset(el: HTMLElement): number {
-  const sel = globalThis.getSelection()
-  if (!sel || sel.rangeCount === 0) return 0
-  const range = sel.getRangeAt(0)
-  const pre = range.cloneRange()
-  pre.selectNodeContents(el)
-  pre.setEnd(range.endContainer, range.endOffset)
-  return pre.toString().length
-}
-
-function setCursorOffset(el: HTMLElement, offset: number) {
-  const sel = globalThis.getSelection()
-  if (!sel) return
-  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
-  let remaining = offset
-  let node: Text | null
-  while ((node = walker.nextNode() as Text | null)) {
-    if (remaining <= node.length) {
-      const r = document.createRange()
-      r.setStart(node, remaining)
-      r.collapse(true)
-      sel.removeAllRanges()
-      sel.addRange(r)
-      return
-    }
-    remaining -= node.length
-  }
-  const r = document.createRange()
-  r.selectNodeContents(el)
-  r.collapse(false)
-  sel.removeAllRanges()
-  sel.addRange(r)
+  return raw.split(/[|｜]/).map(escHtml).join(sep)
 }
 
 function applyTextsToMaintainSegments(
@@ -129,30 +94,22 @@ function MaintainCombinedEditor({
   onAllSegmentsChange,
 }: Readonly<MaintainCombinedEditorProps>) {
   const t = useT()
-  const ref = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const overlayRef = useRef<HTMLDivElement>(null)
   const composing = useRef(false)
   const segmentsRef = useRef(allSegments)
   segmentsRef.current = allSegments
 
-  useEffect(() => {
-    if (ref.current) {
-      ref.current.innerHTML = buildCombinedHtml(allSegments.map((s) => s.content.text))
-      ref.current.focus()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  const [text, setText] = useState(() => allSegments.map((s) => s.content.text).join('|'))
 
-  const handleInput = useCallback(() => {
-    if (!ref.current || composing.current) return
-    const el = ref.current
-    const offset = getCursorOffset(el)
-    const raw = el.textContent ?? ''
-    const rawParts = raw.split(/[|｜]/)
-    el.innerHTML = buildCombinedHtml(rawParts)
-    setCursorOffset(el, offset)
-    const validParts = rawParts
-      .map((p) => p.replaceAll('<br>', '\n').trim())
-      .filter(Boolean)
+  function syncScroll() {
+    if (textareaRef.current && overlayRef.current) {
+      overlayRef.current.scrollTop = textareaRef.current.scrollTop
+    }
+  }
+
+  const commit = useCallback((raw: string) => {
+    const validParts = raw.split(/[|｜]/).map((p) => p.trim()).filter(Boolean)
     if (validParts.length > 0) {
       onAllSegmentsChange(
         applyTextsToMaintainSegments(validParts, segmentsRef.current, totalFrames, trackColor),
@@ -160,21 +117,42 @@ function MaintainCombinedEditor({
     }
   }, [totalFrames, trackColor, onAllSegmentsChange])
 
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    if (composing.current) return
+    const raw = e.target.value
+    setText(raw)
+    commit(raw)
+  }, [commit])
+
   return (
     <div className="flex flex-col gap-1">
-      <div
-        ref={ref}
-        contentEditable
-        suppressContentEditableWarning
-        spellCheck={false}
-        className="w-full h-30 overflow-y-auto text-[10px] bg-transparent outline-none whitespace-pre-wrap wrap-break-word"
-        onInput={handleInput}
-        onCompositionStart={() => { composing.current = true }}
-        onCompositionEnd={() => {
-          composing.current = false
-          handleInput()
-        }}
-      />
+      <div className="relative w-full h-30 overflow-hidden">
+        {/* Highlight overlay – mirrors textarea content with styled separators */}
+        <div
+          ref={overlayRef}
+          aria-hidden="true"
+          className="absolute inset-0 overflow-y-auto text-[10px] whitespace-pre-wrap wrap-break-word pointer-events-none"
+          style={{ padding: 0, lineHeight: 'inherit' }}
+          dangerouslySetInnerHTML={{ __html: buildHighlightHtml(text) }}
+        />
+        {/* Transparent textarea for native input handling */}
+        <Textarea
+          ref={textareaRef}
+          value={text}
+          onChange={handleChange}
+          onScroll={syncScroll}
+          spellCheck={false}
+          onCompositionStart={() => { composing.current = true }}
+          onCompositionEnd={() => {
+            composing.current = false
+            const raw = textareaRef.current?.value ?? ''
+            setText(raw)
+            commit(raw)
+          }}
+          className="absolute inset-0 w-full h-full resize-none text-[10px] border-0 shadow-none focus-visible:ring-0 p-0 bg-transparent outline-none"
+          style={{ color: 'transparent', caretColor: 'var(--foreground)' }}
+        />
+      </div>
       <p className="text-[9px] text-muted-foreground">{t('maintainTrack.combinedHint')}</p>
     </div>
   )

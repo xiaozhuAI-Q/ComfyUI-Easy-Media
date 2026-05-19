@@ -63,7 +63,7 @@ export const TRACK_DEFAULT_COLORS: Record<TrackType, string> = {
   prompt: '#a78bfa',
   image: '#fb923c',
   video: '#60a5fa',
-  maintain: 'var(--secondary)',
+  maintain: 'var(--muted)',
 }
 
 /** Build a default empty TimelineData with one maintain track and one audio track */

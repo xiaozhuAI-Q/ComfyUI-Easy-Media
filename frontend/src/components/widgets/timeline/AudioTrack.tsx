@@ -1,10 +1,17 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Music2 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Popover, PopoverContent, PopoverAnchor } from '@/components/ui/popover'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu'
 import { MediaSelector } from '@/components/widgets/mediaSelector/MediaSelector'
 import type { MediaTab } from '@/components/widgets/mediaSelector/MediaSelector'
 import { SegmentBlock } from './SegmentBlock'
@@ -13,6 +20,7 @@ import { AudioWaveform } from './AudioWaveform'
 import type { Track, AudioSegment, Segment, Marker, TimeDisplayFormat } from '@/types/timeline'
 import { useT } from '@/lib/i18n'
 import { uuid } from '@/lib/uuid'
+import { CUSTOM_NODE_CLASS } from '@/lib/constants'
 import { secondsToAudioFrames } from '@/lib/timeline-utils'
 
 interface AudioTrackProps {
@@ -60,6 +68,22 @@ export function AudioTrack({
   const [anchorPos, setAnchorPos] = useState({ x: 0, y: 0 })
   const [editingSegId, setEditingSegId] = useState<string | null>(null)
   const [selectorValue, setSelectorValue] = useState('')
+  const [rightClickedId, setRightClickedId] = useState<string | null>(null)
+  const [contextMenuOpen, setContextMenuOpen] = useState(false)
+
+  // When an overlay is open:
+  //   1. Elevate the widget container above the dismiss backdrop (z-9999 > z-9997)
+  //      so clicks inside the widget still reach the widget and don't hit the backdrop.
+  //   2. The backdrop (rendered in JSX via createPortal) catches all clicks outside
+  //      the widget/popup, reliably closing overlays even in ComfyUI's NodeV2 where
+  //      the LiteGraph canvas consumes pointer events before Radix's dismiss fires.
+  useEffect(() => {
+    const widgetEl = containerRef.current?.closest('.comfyui-react-widget') as HTMLElement | null
+    if (!widgetEl) return
+    const cls = `${CUSTOM_NODE_CLASS}-overlay-active`
+    widgetEl.classList.toggle(cls, popoverOpen || contextMenuOpen)
+    return () => widgetEl.classList.remove(cls)
+  }, [popoverOpen, contextMenuOpen])
 
   const segments = track.segments as AudioSegment[]
 
@@ -67,18 +91,25 @@ export function AudioTrack({
   const lastOccupied = segments.reduce((max, s) => Math.max(max, s.end_frame), -1)
   const canImport = lastOccupied < totalFrames - 1
 
-  function openPopover(e: React.MouseEvent, defaultTab: MediaTab, segId: string | null, currentValue: string) {
-    const rect = containerRef.current?.getBoundingClientRect()
-    const el = containerRef.current
-    const zoom = (rect && el) ? rect.width / el.offsetWidth : 1
-    setAnchorPos({
-      x: (e.clientX - (rect?.left ?? 0)) / zoom,
-      y: (e.clientY - (rect?.top ?? 0)) / zoom,
-    })
+  function openPopoverAt(x: number, y: number, defaultTab: MediaTab, segId: string | null, currentValue: string) {
+    setAnchorPos({ x, y })
     setPopoverDefaultTab(defaultTab)
     setEditingSegId(segId)
     setSelectorValue(currentValue)
     setPopoverOpen(true)
+  }
+
+  function openPopover(e: React.MouseEvent, defaultTab: MediaTab, segId: string | null, currentValue: string) {
+    const rect = containerRef.current?.getBoundingClientRect()
+    const el = containerRef.current
+    const zoom = (rect && el) ? rect.width / el.offsetWidth : 1
+    openPopoverAt(
+      (e.clientX - (rect?.left ?? 0)) / zoom,
+      (e.clientY - (rect?.top ?? 0)) / zoom,
+      defaultTab,
+      segId,
+      currentValue,
+    )
   }
 
   function handleSelectorChange(filePath: string) {
@@ -164,11 +195,6 @@ export function AudioTrack({
     onSegmentsChange(segments.filter((s) => s.id !== segId))
     setPopoverOpen(false)
     if (selectedId === segId) onSelectedIdChange(null)
-  }
-
-  function handleTrackAreaClick(e: React.MouseEvent) {
-    if (!canImport) return
-    openPopover(e, 'inputs', null, '')
   }
 
   function handleSegmentAtX(frame: number): AudioSegment | null {
@@ -344,28 +370,31 @@ export function AudioTrack({
   return (
     <TrackRow track={track} onTrackChange={onTrackChange} toolSlots={toolSlots}>
       <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-        <section
-          ref={containerRef}
-          aria-label={t('audioTrack.dropZone')}
-          className="relative w-full h-full cursor-default"
-          onDragOver={handleDragOver}
-          onDragLeave={() => setPendingDropFrame(null)}
-          onDrop={handleDrop}
-          onClick={handleClick}
-          onDoubleClick={(e) => {
-            if (!canImport) return
-            openPopover(e, 'inputs', null, '')
-          }}
-        >
-          {/* Virtual anchor positioned at right-click coordinates */}
-          <PopoverAnchor asChild>
-            <span
-              className="absolute w-0 h-0 pointer-events-none"
-              style={{ left: anchorPos.x, top: anchorPos.y }}
-            />
-          </PopoverAnchor>
-
-          {segments.length === 0 ? (
+        <ContextMenu open={contextMenuOpen} onOpenChange={setContextMenuOpen}>
+          <ContextMenuTrigger className="relative block w-full h-full" asChild>
+            <section
+              ref={containerRef}
+              aria-label={t('audioTrack.dropZone')}
+              className="relative w-full h-full cursor-default"
+              onDragOver={handleDragOver}
+              onDragLeave={() => setPendingDropFrame(null)}
+              onDrop={handleDrop}
+              onClick={handleClick}
+              onDoubleClick={(e) => {
+                const target = e.target as HTMLElement
+                if (target.closest('[data-segment-block]')) return
+                if (!canImport) return
+                openPopover(e, 'inputs', null, '')
+              }}
+            >
+              {/* Virtual anchor positioned at click coordinates */}
+              <PopoverAnchor asChild>
+                <span
+                  className="absolute w-0 h-0 pointer-events-none"
+                  style={{ left: anchorPos.x, top: anchorPos.y }}
+                />
+              </PopoverAnchor>
+            {segments.length === 0 ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground pointer-events-none select-none opacity-40">
                 <div className="flex items-center gap-1">
                   <Music2 className="w-3 h-3" />
@@ -385,7 +414,16 @@ export function AudioTrack({
                     areaWidth={areaWidth}
                     interactive={!track.locked}
                     selected={selectedId === seg.id}
-                    onSelect={(s) => onSelectedIdChange(selectedId === s.id ? null : s.id)}
+                    onSelect={(s) => {
+                      onSelectedIdChange(selectedId === s.id ? null : s.id)
+                      openPopoverAt(
+                        frameToX(seg.start_frame, totalFrames, areaWidth),
+                        8,
+                        sourceTypeToTab(seg.content.source_type),
+                        seg.id,
+                        seg.content.file_path ?? seg.content.local_path ?? seg.content.url ?? '',
+                      )
+                    }}
                     onDragEnd={handleDragEnd}
                     onResizeEnd={handleResizeEnd}
                     frameRate={frameRate}
@@ -399,16 +437,9 @@ export function AudioTrack({
                         ? (seg.end_frame - seg.origin_start_frame) / (seg.origin_end_frame - seg.origin_start_frame)
                         : 1}
                     />}
-                    onContextMenu={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      onSelectedIdChange(seg.id)
-                      openPopover(
-                        e,
-                        sourceTypeToTab(seg.content.source_type),
-                        seg.id,
-                        seg.content.file_path ?? seg.content.local_path ?? seg.content.url ?? '',
-                      )
+                    onContextMenu={(_, s) => {
+                      onSelectedIdChange(s.id)
+                      setRightClickedId(s.id)
                     }}
                   >
                     <span className="absolute top-0.5 truncate text-[8px]">{seg.content.file_name}</span>
@@ -447,8 +478,23 @@ export function AudioTrack({
                 style={{ left: frameToX(pendingDropFrame, totalFrames, areaWidth) }}
               />
             )}
+          </section>
+        </ContextMenuTrigger>
 
-        </section>
+        <ContextMenuContent onCloseAutoFocus={() => setRightClickedId(null)}>
+          <ContextMenuItem
+            disabled={!canImport}
+            onClick={() => setTimeout(() => openPopoverAt(8, 8, 'inputs', null, ''), 0)}
+          >
+            {t('audioTrack.contextAdd')}
+          </ContextMenuItem>
+          {rightClickedId && (
+            <ContextMenuItem onClick={() => { handleDeleteSegment(rightClickedId); setRightClickedId(null) }}>
+              {t('audioTrack.contextDelete')}
+            </ContextMenuItem>
+          )}
+        </ContextMenuContent>
+        </ContextMenu>
 
         <PopoverContent
           data-audio-popover=""
@@ -496,6 +542,21 @@ export function AudioTrack({
           })()}
         </DialogContent>
       </Dialog>
+
+      {/* Dismiss backdrop: rendered to body via portal so it sits above the LiteGraph
+          canvas (z-9997) but below popup content (z-9999) and the elevated widget
+          (z-9999). Any click that reaches this backdrop is "outside" — close overlays. */}
+      {(popoverOpen || contextMenuOpen) && createPortal(
+        <div
+          aria-hidden="true"
+          style={{ position: 'fixed', inset: 0, zIndex: 9997 }}
+          onPointerDown={() => {
+            setPopoverOpen(false)
+            setContextMenuOpen(false)
+          }}
+        />,
+        document.body,
+      )}
     </TrackRow>
   )
 }

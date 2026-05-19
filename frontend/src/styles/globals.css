@@ -54,7 +54,7 @@
     --primary-foreground: oklch(0.985 0 0);
     --secondary: oklch(0.97 0 0);
     --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
+    --muted: var(--comfy-input-bg);
     --muted-foreground: oklch(0.556 0 0);
     --accent: oklch(0.97 0 0);
     --accent-foreground: oklch(0.205 0 0);
@@ -62,10 +62,14 @@
     --destructive-foreground: oklch(0.985 0 0);
     --highlight: oklab(0.961 -0.07365 0.16792);
     --warning: oklch(0.922 0.191 90);
-    --border: oklch(0.922 0 0);
+    --border: var(--border-color);
     --input: oklch(0.922 0 0);
     --ring: oklch(0.708 0 0);
     --radius: 0.5rem;
+
+    .nodeNew{
+      --muted:var(--component-node-widget-background);
+    }
 
     @import "tailwindcss/preflight.css";
     * {
@@ -85,13 +89,13 @@
     --primary-foreground: oklch(0.205 0 0);
     --secondary: oklch(0.269 0 0);
     --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
+    --muted: var(--comfy-input-bg);
     --muted-foreground: oklch(0.708 0 0);
     --accent: oklch(0.269 0 0);
     --accent-foreground: oklch(0.985 0 0);
     --destructive: oklch(0.704 0.191 22.216);
     --destructive-foreground: oklch(0.985 0 0);
-    --border: oklch(0.3703 0.01192 285.76);
+    --border: var(--border-color);
     --input: oklch(1 0 0 / 15%);
     --ring: oklch(0.556 0 0);
   }
@@ -117,4 +121,26 @@
     pointer-events: none;
     opacity: 0.5;
   }
+}
+
+/* ── Overlay management ─────────────────────────────────────────────────────
+ * When a Popover or ContextMenu is open, the widget container is elevated so
+ * it stays interactive above the dismiss backdrop (z-9997).
+ * The backdrop is a full-screen fixed div that intercepts clicks before they
+ * reach the LiteGraph canvas — the only reliable dismiss approach in ComfyUI. */
+.comfyui-react-widget.__CUSTOM_NODE_CLASS__-overlay-active {
+  position: relative !important;
+  z-index: 9999 !important;
+}
+
+/* Radix portal wrapper divs rendered into document.body.
+ * pointer-events:none on the wrapper avoids capturing clicks in areas
+ * where there is no actual popup content. */
+body > .__CUSTOM_NODE_CLASS__ {
+  display: block;
+  visibility: visible;
+  pointer-events: none;
+}
+body > .__CUSTOM_NODE_CLASS__ > * {
+  pointer-events: auto;
 }

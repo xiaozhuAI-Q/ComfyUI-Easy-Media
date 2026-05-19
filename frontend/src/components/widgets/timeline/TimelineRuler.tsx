@@ -139,7 +139,7 @@ export function TimelineRuler({ totalFrames, frameRate, displayFormat, width, ca
           style={{ left: frameToX(frame) }}
         >
           <div
-            className={`w-px ${major ? 'h-2 bg-muted-foreground' : 'h-1.5 bg-muted-foreground/40'}`}
+            className={`w-px ${major ? 'h-2 bg-border' : 'h-1.5 bg-border'}`}
           />
           {major && (
             <span className="text-[9px] text-muted-foreground/70 whitespace-nowrap translate-x-1">

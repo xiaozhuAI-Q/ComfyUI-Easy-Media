@@ -417,7 +417,7 @@ export function TimelineWidget({ value, onChange, app, node }: Readonly<ReactWid
     <LocaleContext.Provider value={locale}>
     <TooltipProvider>
       <div
-        className="flex flex-col w-full text-foreground rounded overflow-hidden font-sans text-xs select-none"
+        className={`flex flex-col w-full text-foreground rounded overflow-hidden font-sans text-xs select-none${isNodeV2 ? ' nodeNew' : ''}`}
         onContextMenu={handleContextMenu}
         onClick={handleGlobalClick}
       >

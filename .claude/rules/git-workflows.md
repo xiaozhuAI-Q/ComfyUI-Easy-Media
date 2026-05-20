@@ -25,9 +25,8 @@
   - `refactor: extract FFmpeg helpers` — refactor shared utilities
   - `feat: add thumbnail mode to ImagePreview` — UI for a specific feature
   - `feat: add zh-CN translations for ImageLoader` — localization for a specific node/feature
-- **dist directory commits separately**: Changes to the dist directory should not be mixed with other feature commits. After frontend builds, submit dist changes as a separate commit: `ci: update bundled frontend assets`
+- **dist directory commits separately**: Changes to the dist directory should not be mixed with other feature commits. After frontend builds, the pre-commit hook automatically stages dist changes with the commit.
 - **Use `git diff` to guide grouping**: Before committing, run `git diff` to see all changes and group files that logically belong together into the same commit
-- **Frontend changes require build**: Before any git commit that modifies frontend code (`.tsx`, `.ts`, CSS, or assets), you MUST run `cd frontend && bun run build:release` first to update the bundled output in `dist/release`
 - Commit message format follows standard convention (see below)
 ```
 <type>: <description>
@@ -38,6 +37,17 @@
 Type: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, `perf`, `ci`
 
 Note: Attribution disabled globally via ~/.claude/settings.json.
+
+## Automated Hooks
+
+These steps are automated via [Husky](https://typicode.github.io/husky/) in `.husky/`:
+
+| Hook | Function |
+|------|----------|
+| `commit-msg` | Validates conventional commit format (feat, fix, refactor, etc.) |
+| `pre-commit` | Auto-builds frontend and stages dist when `.tsx?/css` files are staged |
+
+Manual build is no longer required — hooks handle it automatically.
 
 ## Pre-Push Review
 

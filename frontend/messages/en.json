@@ -53,6 +53,7 @@
     "placeholderHint": "Double-click to add content",
     "dropZone": "Audio track drop zone",
     "selectMedia": "Select audio",
+    "contextEdit": "Edit segment",
     "contextAdd": "Add segment",
     "contextDelete": "Delete segment"
   },

@@ -53,6 +53,7 @@
     "placeholderHint": "双击可添加内容",
     "dropZone": "音频轨道拖放区域",
     "selectMedia": "选择音频",
+    "contextEdit": "编辑片段",
     "contextAdd": "添加片段",
     "contextDelete": "删除片段"
   },

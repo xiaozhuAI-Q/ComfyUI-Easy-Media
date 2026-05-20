@@ -416,6 +416,8 @@ export function AudioTrack({
                     selected={selectedId === seg.id}
                     onSelect={(s) => {
                       onSelectedIdChange(selectedId === s.id ? null : s.id)
+                    }}
+                    onDoubleClick={() => {
                       openPopoverAt(
                         frameToX(seg.start_frame, totalFrames, areaWidth),
                         8,
@@ -488,11 +490,31 @@ export function AudioTrack({
           >
             {t('audioTrack.contextAdd')}
           </ContextMenuItem>
-          {rightClickedId && (
-            <ContextMenuItem onClick={() => { handleDeleteSegment(rightClickedId); setRightClickedId(null) }}>
-              {t('audioTrack.contextDelete')}
-            </ContextMenuItem>
-          )}
+          {rightClickedId && (() => {
+            const rightClickedSeg = segments.find((s) => s.id === rightClickedId)
+            return (
+              <>
+                <ContextMenuItem
+                  onClick={() => {
+                    if (!rightClickedSeg) return
+                    setTimeout(() => openPopoverAt(
+                      frameToX(rightClickedSeg.start_frame, totalFrames, areaWidth),
+                      8,
+                      sourceTypeToTab(rightClickedSeg.content.source_type),
+                      rightClickedSeg.id,
+                      rightClickedSeg.content.file_path ?? rightClickedSeg.content.local_path ?? rightClickedSeg.content.url ?? '',
+                    ), 0)
+                    setRightClickedId(null)
+                  }}
+                >
+                  {t('audioTrack.contextEdit')}
+                </ContextMenuItem>
+                <ContextMenuItem onClick={() => { handleDeleteSegment(rightClickedId); setRightClickedId(null) }}>
+                  {t('audioTrack.contextDelete')}
+                </ContextMenuItem>
+              </>
+            )
+          })()}
         </ContextMenuContent>
         </ContextMenu>
 

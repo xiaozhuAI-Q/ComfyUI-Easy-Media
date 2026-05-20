@@ -48,7 +48,7 @@ git clone https://github.com/yolain/ComfyUI-Easy-Media.git
 > 我认为媒体时间线编辑器组件更适合作为单独的模块节点来使用，会更具有通用性。此节点更聚焦于媒体的导入/编辑、时间轴相关的功能与交互，可以更好地为不同模型的视频流水线创作提供有利的帮助。<br>
 编辑器可用于视频单段的生成（如结合PromptRealy），也可用作分段生成，每一段可结合不同模型的视频流水线进行纯文本生成、单图生成、首尾帧生成、多帧生成、参考生成等）
 
-![timelineEditor](https://github.com/user-attachments/assets/5f78a31c-e0e7-4d0e-ba58-e68d78f325ac)
+![timelineEditor](https://github.com/user-attachments/assets/a6481c26-22e4-4170-bd1f-26b217bc4cba)
 
 #### 轨道类型
 
@@ -59,7 +59,7 @@ git clone https://github.com/yolain/ComfyUI-Easy-Media.git
 
 ### 保存视频 SaveVideo
 
-![保存视频](https://github.com/user-attachments/assets/acf75fae-88ea-450d-8171-cb655bb99420)
+![保存视频](https://github.com/user-attachments/assets/30e2dcc3-9ed3-4d5f-bb15-69e50c3e8fca)
 > 已整合 SaveVideoRGBA 节点包的视频保存节点，并进行了功能完善。支持视频导出，可自定义输出路径、文件名前缀、帧率等参数。
 
 

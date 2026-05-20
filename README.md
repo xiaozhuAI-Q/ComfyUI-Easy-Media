@@ -49,7 +49,7 @@ After installing, open ComfyUI and find the bundled example workflows in the **T
 > I believe the media timeline editor component is better suited as a standalone module node for greater versatility. This node focuses on media import/editing and timeline-related functionality, providing better support for video pipeline creation across different models.<br>
 The editor can be used for single video segment generation (e.g., combined with PromptRelay), as well as segmented generation. Each segment can be combined with different model video pipelines for text-only generation, single image generation, first/last frame generation, multi-frame generation, reference-based generation, etc.
 
-![timelineEditor](https://github.com/user-attachments/assets/5f78a31c-e0e7-4d0e-ba58-e68d78f325ac)
+![timelineEditor](https://github.com/user-attachments/assets/a6481c26-22e4-4170-bd1f-26b217bc4cba)
 
 #### Track Types
 
@@ -60,7 +60,7 @@ The editor can be used for single video segment generation (e.g., combined with 
 
 ### SaveVideo
 
-![SaveVideo](https://github.com/user-attachments/assets/acf75fae-88ea-450d-8171-cb655bb99420)
+![SaveVideo](https://github.com/user-attachments/assets/30e2dcc3-9ed3-4d5f-bb15-69e50c3e8fca)
 > Integrated and enhanced the video saving node from the SaveVideoRGBA node package. Supports video export with customizable output path, filename prefix, frame rate, and other parameters.
 
 ### MultiTrack Editor

@@ -1,5 +1,23 @@
 # Git Workflow
 
+## Branch Strategy
+
+### Creating Branches for Features
+- Switch to `main` and ensure it is up-to-date (pull if needed) before creating a new branch
+- If a branch with the same feature already exists, switch to it instead of creating a new one
+- For new features and adjustments (excluding README, AI assistant files, docs, etc.), always create a branch from `main`
+
+### Branching from Issues
+- When fixing code mentioned in an issue, create a branch specifically for that issue
+
+### Pull Request Creation
+- After pushing a branch to remote, create a corresponding PR
+- If a similar feature PR is already open, ask the user whether to contribute to that PR instead
+
+### Before Switching or Committing Branches
+- Check if the current branch is behind `main` with conflicting changes
+- If so, rebase `main` into the current branch before committing or switching
+
 ## Commit Rules
 
 - **Separate commits by feature/responsibility**: Group changes by feature or responsibility area, not by file type alone. Example:

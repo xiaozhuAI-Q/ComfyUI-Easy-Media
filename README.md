@@ -28,8 +28,8 @@ After installing, open ComfyUI and find the bundled example workflows in the **T
 
 | Date (estimated) | Status                 | Version |
 | ---------------- | ---------------------- | ------- |
-| May 24-25 🚩      | (Register)            | v1.0.0  |
-| May 21-24        | Improve                | -       |
+| May 24-25       | (Register)            | v1.0.0  |
+| May 21-24 🚩     | Improve                | -       |
 | May 17-18        | Pre-release & Debug    | -       |
 | May 13-16        | Development            | -       |
 | May 11-12        | Architecture Design    | -       |
@@ -78,6 +78,8 @@ The editor can be used for single video segment generation (e.g., combined with 
 **Adding Media via Timeline Editor Input Ports**:
 > If you only want to pass parameters via the `image` or `audio` input ports and do not want to use `prompt_override`, you can use the `slot` method to associate media in the image or audio adding section with the media from the corresponding input port. This way, when executing workflow tasks, the input media resources will automatically be associated with the corresponding segments in the timeline editor.
 (Note: The preview displayed on the timeline editor traces back to the resources of the corresponding nodes that initially loaded the images or audio. If you use cropping or truncation nodes between the loading and timeline editor workflow to process the original media, the backend will also execute this processing; however, the frontend preview display shows the initial state.)
+
+![dynamicInput2](https://github.com/user-attachments/assets/6dd84d52-1fd3-4b27-a890-2a0e22cecda4)
 
 ### SaveVideo
 

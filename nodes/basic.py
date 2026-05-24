@@ -498,7 +498,7 @@ class TimelineEditor(io.ComfyNode):
         merged_waveform: torch.Tensor | None = None
 
         # ---- Single audio as whole timeline: clip/pad to total duration ----
-        if prompt_override != '' and "@audio" not in prompt_override and "@音频" not in prompt_override and audio_input is not None and len(audio_input) == 1:
+        if prompt_override and prompt_override != '' and "@audio" not in prompt_override and "@音频" not in prompt_override and audio_input is not None and len(audio_input) == 1:
             a = audio_input[0]  # Extract from single-element list
             channels = a['waveform'].shape[1] if 'waveform' in a else 2
             _raw_sr = a.get('sample_rate', default_sr)

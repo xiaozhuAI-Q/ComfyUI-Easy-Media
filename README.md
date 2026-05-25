@@ -11,7 +11,7 @@ A ComfyUI custom node package for streamlined media loading and video pipeline a
 
 ## Installation
 
-
+```bash
 cd Your_ComfyUI_Path/custom_nodes
 git clone https://github.com/yolain/ComfyUI-Easy-Media.git
 ```
@@ -24,8 +24,8 @@ After installing, open ComfyUI and find the bundled example workflows in the **T
 
 | Date (estimated) | Status                 | Version |
 | ---------------- | ---------------------- | ------- |
-| May 24-25        | Release                | v1.0.0  |
-| May 21-24 🚩     | Improve                | -       |
+| May 24-25 🚩     | Release                | v1.0.0  |
+| May 21-24        | Improve                | -       |
 | May 17-18        | Pre-release & Debug    | -       |
 | May 13-16        | Development            | -       |
 | May 11-12        | Architecture Design    | -       |

@@ -1,0 +1,15 @@
+[project]
+name = "comfyui-easy-media"
+description = "A ComfyUI custom node package for streamlined media loading and video pipeline assembly. Provides intuitive nodes that simplify media resource loading with user-friendly parameters, making it easier to build and configure video processing workflows."
+version = "1.0.0"
+license = { file = "LICENSE" }
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/yolain/ComfyUI-Easy-Media"
+#  Used by Comfy Registry https://comfyregistry.org
+
+[tool.comfy]
+PublisherId = "yolain"
+DisplayName = "ComfyUI-Easy-Media"
+Icon = ""

@@ -7,17 +7,19 @@ export function getImageSrc(img: ImageItem): string | null {
   if (img.file_path) {
     // Backward-compat: URL images stored via old code may have url in file_path
     if (/^https?:\/\//i.test(img.file_path)) return img.file_path
-    const lastSlash = img.file_path.lastIndexOf('/')
+    // Handle both forward slash and backslash as path separator
+    const lastSlash = Math.max(img.file_path.lastIndexOf('/'), img.file_path.lastIndexOf('\\'))
     const filename = lastSlash >= 0 ? img.file_path.slice(lastSlash + 1) : img.file_path
     const subfolder = lastSlash >= 0 ? img.file_path.slice(0, lastSlash) : ''
-    return `/view?filename=${encodeURIComponent(filename)}&type=input&subfolder=${encodeURIComponent(subfolder)}`
+    const typeParam = img.source_type === 'output' || img.source_type === 'local' ? img.source_type : 'input'
+    return `/view?filename=${encodeURIComponent(filename)}&type=${typeParam}&subfolder=${encodeURIComponent(subfolder)}`
   }
   return null
 }
 
-export function imageItemFromPath(filePath: string): ImageItem {
+export function imageItemFromPath(filePath: string, sourceType: 'input' | 'output' | 'local' = 'input'): ImageItem {
   return {
-    source_type: 'input',
+    source_type: sourceType,
     file_path: filePath,
     file_name: filePath.split('/').pop() ?? filePath,
   }

@@ -6,6 +6,8 @@
 <br>
 </div>
 
+![Poster](https://github.com/user-attachments/assets/6c76433e-1893-4709-8738-acbed4438757)
+
 这是一个用于简化媒体加载和视频处理管道构建的 ComfyUI 自定义节点包。它提供了直观的节点，通过用户友好的参数简化媒体资源的编辑与加载，从而更轻松地构建和配置视频处理工作流。
 
 
@@ -79,11 +81,7 @@ git clone https://github.com/yolain/ComfyUI-Easy-Media.git
 
 ### 从路径合并视频 MergeVideoFromPath
 
-> 该节点可以从指定路径加载视频文件，并将它们合并成一个视频输出。支持可选的 **过渡效果（Fade）**，在每段视频之间添加淡入淡出转场。
-
-**转场选项**：
-- `None`：无转场，直接拼接。优先使用 FFmpeg 流复制（stream copy）方式，速度最快、零重编码；若 FFmpeg 不可用则回退到纯 PyTorch 张量合并。
-- `Fade`：淡入淡出转场，可设置转场时长（秒）。优先使用 FFmpeg `xfade` 滤镜；若不可用则自动回退到 PyTorch 线性混合实现，效果等效。
+> 该节点可以从指定路径加载视频文件，并将它们合并成一个视频输出。
 
 **推荐安装 FFmpeg** 以获得最佳性能和转场质量：
 

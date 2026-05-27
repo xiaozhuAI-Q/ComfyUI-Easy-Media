@@ -6,6 +6,8 @@
 <br>
 </div>
 
+![Poster](https://github.com/user-attachments/assets/6c76433e-1893-4709-8738-acbed4438757)
+
 A ComfyUI custom node package for streamlined media loading and video pipeline assembly. Provides intuitive nodes that simplify media resource editing and loading with user-friendly parameters, making it easier to build and configure video processing workflows.
 
 
@@ -87,11 +89,7 @@ The editor can be used for single video segment generation (e.g., combined with 
 
 ### Merge Videos From Paths
 
-> Load video files from a list of file paths (or URLs) and concatenate them into a single video output. Supports an optional **Fade** transition between clips.
-
-**Transition options**:
-- `None`: No transition — direct cut. Prioritizes FFmpeg stream copy (zero re-encode, fastest possible); falls back to PyTorch tensor merge if FFmpeg is unavailable.
-- `Fade`: Cross-fade between clips with a configurable duration (seconds). Prioritizes FFmpeg `xfade` filter; automatically falls back to PyTorch linear blend if unavailable — same visual effect, slightly slower.
+> Load video files from a list of file paths (or URLs) and concatenate them into a single video output.
 
 **Installing FFmpeg** is recommended for best performance and transition quality:
 

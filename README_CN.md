@@ -26,6 +26,7 @@ git clone https://github.com/yolain/ComfyUI-Easy-Media.git
 
 ### v1.0.1
 
+- 【工作流】添加wan2.2 循环片段示例工作流
 - 【前端优化】添加选中片段时出现+号可以往前或往后增加片段，并修复了一些已知bug
 - 【Bug修复】从output和子目录导入的图片链接有错误，导致编辑器中图片和输出都被过滤。
 

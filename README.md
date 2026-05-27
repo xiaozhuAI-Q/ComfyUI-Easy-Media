@@ -26,6 +26,7 @@ After installing, open ComfyUI and find the bundled example workflows in the **T
 
 ### v1.0.1
 
+- **[Workflow]** Added wan2.2 loop segment example workflow
 - **[Frontend Optimization]** Added + button to insert segments before or after the selected segment, and fixed some known bugs
 - **[Bug Fix]** Fixed incorrect image import paths from output and subdirectories, which caused images and outputs to be filtered out in the editor
 

@@ -24,6 +24,11 @@ After installing, open ComfyUI and find the bundled example workflows in the **T
 
 ## Changelog
 
+### v1.0.3
+
+- **[Timeline Editor: UI Mode]** Fixed the issue where nodes and track heights didn't adapt automatically; added `Clone Clip` to the right-click menu for better compatibility with wan2's `berinini` and `LTX2.3 R2V`
+- **[LTXV Reference Video]** New node for multi-reference LoRA [model_url](https://huggingface.co/LiconStudio/LTX-2.3-Multiple-Subject-Reference)
+
 ### v1.0.2
 
 - **[Timeline Editor: App Mode]** Fixed an issue where, if `prompt_override` was not written strictly according to the prompt format, the default duration was not evenly distributed across clips
@@ -157,3 +162,4 @@ bun run build:release
 
 - [WhatDreamsCost-ComfyUI](https://github.com/WhatDreamsCost/WhatDreamsCost-ComfyUI)
 - [ComfyUI-PromptRelay](https://github.com/kijai/ComfyUI-PromptRelay)
+- [ComfyUI-Licon-MSR](https://github.com/liconstudio/ComfyUI-Licon-MSR)

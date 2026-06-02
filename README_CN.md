@@ -10,7 +10,6 @@
 
 这是一个用于简化媒体加载和视频处理管道构建的 ComfyUI 自定义节点包。它提供了直观的节点，通过用户友好的参数简化媒体资源的编辑与加载，从而更轻松地构建和配置视频处理工作流。
 
-
 ## 安装
 
 ```bash
@@ -23,6 +22,11 @@ git clone https://github.com/yolain/ComfyUI-Easy-Media.git
 安装完成后，打开 ComfyUI，在左侧侧边栏的 **Templates（模板）** 面板中即可找到内置的示例工作流，查找 **ComfyUI-Easy-Media** 相关条目。
 
 ## 更新日志
+
+### v1.0.3
+
+- **【时间线编辑器：UI模式】** 修复节点和轨道高度自适应的问题，右键菜单新增`克隆片段`，以方便 wan2的`berinini`和 `LTX2.3 R2V` 使用
+- **【LTXV制作参考视频】** 针对于多参考Lora[模型地址](https://huggingface.co/LiconStudio/LTX-2.3-Multiple-Subject-Reference)新添加的节点
 
 ### v1.0.2
 
@@ -157,3 +161,4 @@ bun run build:release
 
 - [WhatDreamsCost-ComfyUI](https://github.com/WhatDreamsCost/WhatDreamsCost-ComfyUI)
 - [ComfyUI-PromptRelay](https://github.com/kijai/ComfyUI-PromptRelay)
+- [ComfyUI-Licon-MSR](https://github.com/liconstudio/ComfyUI-Licon-MSR)

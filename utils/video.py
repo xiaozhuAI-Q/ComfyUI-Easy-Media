@@ -1,18 +1,299 @@
 from __future__ import annotations
 
+import io
 import json
 import logging
+import math
 import os
 import shutil
 import subprocess
 import tempfile
+import urllib.request
 from dataclasses import dataclass
 from fractions import Fraction
-from typing import Any
+from typing import Any, Callable
 
+import folder_paths
 import torch
 
 logger = logging.getLogger(__name__)
+
+FFMPEG_RESIZE_METHODS = frozenset({"stretch", "resize", "pad", "pad (white)", "crop"})
+_VIDEO_EXTENSIONS = frozenset({".mp4", ".mov", ".mkv", ".webm", ".avi", ".m4v"})
+
+
+def _video_output_suffix(path: str) -> str:
+    """Return a standard video suffix, ignoring ComfyUI URL-style annotations."""
+    clean_path = path.split("?", 1)[0].split("&", 1)[0]
+    suffix = os.path.splitext(clean_path)[1].lower()
+    if suffix in _VIDEO_EXTENSIONS:
+        return suffix
+    return ".mp4"
+
+
+def resolve_video_path(
+    source_type: str,
+    file_path: str | None,
+    local_path: str | None,
+    url: str | None,
+) -> str | io.BytesIO:
+    """Resolve a multitrack video reference to a VideoFromFile source."""
+    if source_type == "url" and url:
+        try:
+            with urllib.request.urlopen(url, timeout=30) as response:  # noqa: S310
+                return io.BytesIO(response.read())
+        except Exception as exc:
+            raise RuntimeError(f"Failed to load video URL: {url}") from exc
+
+    if source_type == "output" and file_path:
+        resolved = os.path.join(folder_paths.get_output_directory(), file_path)
+    elif source_type == "input" and file_path:
+        resolved = folder_paths.get_annotated_filepath(file_path)
+    elif source_type == "local" and local_path:
+        resolved = local_path
+    else:
+        raise ValueError(f"Unsupported or incomplete video source: {source_type!r}")
+
+    if not os.path.isfile(resolved):
+        raise FileNotFoundError(f"Video file not found: {resolved}")
+    return resolved
+
+
+def _ffmpeg_resize_filter(width: int, height: int, method: str) -> str | None:
+    if method == "stretch":
+        return f"scale={width}:{height}"
+    if method in {"resize", "pad", "pad (white)"}:
+        color = "white" if method == "pad (white)" else "black"
+        return (
+            f"scale={width}:{height}:force_original_aspect_ratio=decrease,"
+            f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:{color}"
+        )
+    if method == "crop":
+        return (
+            f"scale={width}:{height}:force_original_aspect_ratio=increase,"
+            f"crop={width}:{height}"
+        )
+    return None
+
+
+def resize_video_with_ffmpeg(
+    source: str,
+    width: int,
+    height: int,
+    method: str,
+    progress_callback: Callable[[float], None] | None = None,
+) -> str | None:
+    """Resize a file-backed video with FFmpeg, returning a temp output path."""
+    ffmpeg = get_ffmpeg_path("ffmpeg")
+    video_filter = _ffmpeg_resize_filter(width, height, method)
+    if ffmpeg is None or video_filter is None or not os.path.isfile(source):
+        return None
+    if width % 2 or height % 2:
+        return None
+
+    duration = ffprobe_info(source).get("duration")
+    output_fd, output_path = tempfile.mkstemp(
+        suffix=".mp4",
+        dir=folder_paths.get_temp_directory(),
+    )
+    os.close(output_fd)
+    command = [
+        ffmpeg,
+        "-y",
+        "-i",
+        source,
+        "-map",
+        "0:v:0",
+        "-map",
+        "0:a?",
+        "-vf",
+        video_filter,
+        "-c:v",
+        "libx264",
+        "-preset",
+        "veryfast",
+        "-crf",
+        "18",
+        "-c:a",
+        "copy",
+        "-map_metadata",
+        "0",
+        "-movflags",
+        "+faststart",
+        "-progress",
+        "pipe:1",
+        "-nostats",
+        output_path,
+    ]
+
+    if progress_callback is not None:
+        progress_callback(0.0)
+
+    try:
+        with tempfile.TemporaryFile() as stderr_file:
+            process = subprocess.Popen(
+                command,
+                stdout=subprocess.PIPE,
+                stderr=stderr_file,
+                text=True,
+            )
+            if process.stdout is not None:
+                for line in process.stdout:
+                    key, separator, raw_value = line.strip().partition("=")
+                    if separator and key == "out_time_us" and duration:
+                        ratio = min(1.0, max(0.0, float(raw_value) / (float(duration) * 1_000_000)))
+                        if progress_callback is not None:
+                            progress_callback(ratio)
+            return_code = process.wait()
+            if return_code != 0:
+                stderr_file.seek(0)
+                error_text = stderr_file.read().decode(errors="replace")[-600:]
+                logger.warning("FFmpeg video resize failed: %s", error_text)
+                os.unlink(output_path)
+                return None
+    except (OSError, ValueError) as exc:
+        logger.warning("FFmpeg video resize failed: %s", exc)
+        try:
+            os.unlink(output_path)
+        except OSError:
+            pass
+        return None
+
+    if progress_callback is not None:
+        progress_callback(1.0)
+    return output_path
+
+
+def merge_video_track_with_ffmpeg(
+    segments: list[dict],
+    total_length: int,
+    frame_rate: float,
+    width: int,
+    height: int,
+) -> str | None:
+    """Compose file-backed segments on a black full-length timeline."""
+    ffmpeg = get_ffmpeg_path("ffmpeg")
+    if ffmpeg is None or total_length <= 0 or frame_rate <= 0 or width % 2 or height % 2:
+        return None
+    if any(not os.path.isfile(str(segment.get("source", ""))) for segment in segments):
+        return None
+
+    total_seconds = total_length / frame_rate
+    output_fd, output_path = tempfile.mkstemp(
+        suffix=".mp4",
+        dir=folder_paths.get_temp_directory(),
+    )
+    os.close(output_fd)
+    command = [
+        ffmpeg,
+        "-y",
+        "-f",
+        "lavfi",
+        "-i",
+        f"color=c=black:s={width}x{height}:r={frame_rate}:d={total_seconds}",
+        "-f",
+        "lavfi",
+        "-i",
+        f"anullsrc=r=44100:cl=stereo:d={total_seconds}",
+    ]
+    for segment in segments:
+        command.extend(["-i", str(segment["source"])])
+
+    filters = ["[0:v]setpts=PTS-STARTPTS[basev]", "[1:a]asetpts=PTS-STARTPTS[basea]"]
+    current_video = "basev"
+    audio_labels = ["basea"]
+    for index, segment in enumerate(segments):
+        input_index = index + 2
+        start_frame = max(0, int(segment.get("start_frame", 0)))
+        end_frame = min(total_length, max(start_frame, int(segment.get("end_frame", start_frame))))
+        start_seconds = start_frame / frame_rate
+        source_start_seconds = max(0, int(segment.get("source_start_frame", 0))) / frame_rate
+        duration = (end_frame - start_frame) / frame_rate
+        if duration <= 0:
+            continue
+        clip_label = f"clipv{index}"
+        output_label = f"timelinev{index}"
+        filters.append(
+            f"[{input_index}:v]fps={frame_rate},trim=start={source_start_seconds}:duration={duration},"
+            f"setpts=PTS-STARTPTS+{start_seconds}/TB[{clip_label}]"
+        )
+        filters.append(
+            f"[{current_video}][{clip_label}]overlay=eof_action=pass:"
+            f"enable='between(t,{start_seconds},{start_seconds + duration})'[{output_label}]"
+        )
+        current_video = output_label
+
+        if ffprobe_info(str(segment["source"])).get("has_audio"):
+            audio_label = f"clipa{index}"
+            delay_ms = round(start_seconds * 1000)
+            muted = segment.get("audio_muted") is True
+            raw_volume_db = segment.get("audio_volume_db", 0.0)
+            try:
+                volume_db = float(raw_volume_db)
+            except (TypeError, ValueError):
+                volume_db = 0.0
+            if not math.isfinite(volume_db):
+                volume_db = 0.0
+            volume_filter = "volume=0" if muted else f"volume={volume_db:g}dB"
+            filters.append(
+                f"[{input_index}:a]atrim=start={source_start_seconds}:duration={duration},asetpts=PTS-STARTPTS,"
+                f"{volume_filter},adelay={delay_ms}:all=1[{audio_label}]"
+            )
+            audio_labels.append(audio_label)
+
+    if len(audio_labels) > 1:
+        audio_inputs = "".join(f"[{label}]" for label in audio_labels)
+        filters.append(
+            f"{audio_inputs}amix=inputs={len(audio_labels)}:duration=longest:normalize=0[aout]"
+        )
+        audio_output = "aout"
+    else:
+        audio_output = "basea"
+
+    command.extend([
+        "-filter_complex",
+        ";".join(filters),
+        "-map",
+        f"[{current_video}]",
+        "-map",
+        f"[{audio_output}]",
+        "-t",
+        str(total_seconds),
+        "-c:v",
+        "libx264",
+        "-preset",
+        "veryfast",
+        "-crf",
+        "18",
+        "-pix_fmt",
+        "yuv420p",
+        "-c:a",
+        "aac",
+        "-movflags",
+        "+faststart",
+        output_path,
+    ])
+    try:
+        result = subprocess.run(command, capture_output=True)
+    except OSError as exc:
+        logger.warning("FFmpeg video track merge failed to start: %s", exc)
+        try:
+            os.unlink(output_path)
+        except OSError:
+            pass
+        return None
+    if result.returncode == 0:
+        return output_path
+
+    logger.warning(
+        "FFmpeg video track merge failed: %s",
+        result.stderr.decode(errors="replace")[-600:],
+    )
+    try:
+        os.unlink(output_path)
+    except OSError:
+        pass
+    return None
 
 
 def get_ffmpeg_path(name: str = "ffmpeg") -> str | None:
@@ -179,6 +460,83 @@ def ffmpeg_concat(
             os.unlink(list_path)
         except OSError:
             pass
+
+
+def trim_video_with_ffmpeg(
+    input_path: str,
+    frame_count: int,
+    progress_callback: "callable[[str], None] | None" = None,
+) -> str | None:
+    """Trim a video to ``frame_count`` frames based on its detected fps.
+
+    Returns a temp output path when trimming succeeds. Returns ``None`` when
+    trimming is disabled, FFmpeg is unavailable, or fps cannot be detected.
+    """
+    if frame_count <= 0:
+        return None
+
+    ffmpeg = get_ffmpeg_path("ffmpeg")
+    if not ffmpeg or not os.path.isfile(input_path):
+        return None
+
+    fps = ffprobe_info(input_path).get("fps")
+    if not isinstance(fps, (int, float)) or fps <= 0:
+        return None
+
+    duration = frame_count / float(fps)
+    suffix = _video_output_suffix(input_path)
+    output_fd, output_path = tempfile.mkstemp(
+        suffix=suffix,
+        dir=folder_paths.get_temp_directory(),
+    )
+    os.close(output_fd)
+
+    base_cmd = [
+        ffmpeg,
+        "-y",
+        "-t",
+        f"{duration:.6f}",
+        "-i",
+        input_path,
+        "-map",
+        "0",
+    ]
+
+    if progress_callback:
+        progress_callback(f"FFmpeg trim to {frame_count} frames ({duration:.3f}s)…")
+
+    result = subprocess.run(
+        base_cmd + ["-c", "copy", "-avoid_negative_ts", "make_zero", output_path],
+        capture_output=True,
+    )
+    if result.returncode == 0:
+        return output_path
+
+    logger.warning(
+        "[trim_video_with_ffmpeg] stream copy failed (rc=%d), retrying with re-encode. "
+        "stderr: %s",
+        result.returncode,
+        result.stderr.decode(errors="replace")[-400:],
+    )
+
+    result2 = subprocess.run(
+        base_cmd + [
+            "-c:v", "libx264", "-preset", "fast",
+            "-c:a", "aac",
+            output_path,
+        ],
+        capture_output=True,
+    )
+    if result2.returncode == 0:
+        return output_path
+
+    try:
+        os.unlink(output_path)
+    except OSError:
+        pass
+    raise RuntimeError(
+        f"FFmpeg trim failed:\n{result2.stderr.decode(errors='replace')[-600:]}"
+    )
 
 
 def _parse_video_stream(stream: dict) -> "tuple[int | None, int | None, float | None]":
@@ -512,3 +870,63 @@ def ffmpeg_replace_audio(
             f"FFmpeg replace-audio failed:\n{result.stderr.decode(errors='replace')[-600:]}"
         )
     return True
+
+
+def _load_wav_audio(path: str) -> dict:
+    try:
+        import soundfile as sf  # type: ignore[import]
+
+        data, sample_rate = sf.read(path, dtype="float32", always_2d=True)
+        waveform = torch.from_numpy(data.T).unsqueeze(0)
+        return {"waveform": waveform, "sample_rate": int(sample_rate)}
+    except Exception:
+        try:
+            import torchaudio  # type: ignore[import]
+
+            waveform, sample_rate = torchaudio.load(path)
+            return {"waveform": waveform.unsqueeze(0), "sample_rate": int(sample_rate)}
+        except Exception as exc:
+            raise RuntimeError("Failed to load extracted audio with soundfile or torchaudio.") from exc
+
+
+def ffmpeg_extract_audio(video_path: str) -> dict | None:
+    """Extract a video's audio track to a ComfyUI AUDIO dict using FFmpeg.
+
+    Returns None when FFmpeg is unavailable, the source path is not file-backed,
+    or FFmpeg reports that audio extraction failed.
+    """
+    ffmpeg = get_ffmpeg_path("ffmpeg")
+    if not ffmpeg:
+        return None
+    if not os.path.isfile(video_path):
+        return None
+
+    tmp_fd, audio_path = tempfile.mkstemp(suffix=".wav", dir=folder_paths.get_temp_directory())
+    os.close(tmp_fd)
+    cmd = [
+        ffmpeg,
+        "-y",
+        "-i",
+        video_path,
+        "-vn",
+        "-acodec",
+        "pcm_s16le",
+        audio_path,
+    ]
+    try:
+        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+        if result.returncode != 0:
+            logger.warning(
+                "[ffmpeg_extract_audio] FFmpeg audio extraction failed: %s",
+                result.stderr.decode("utf-8", errors="replace").strip()[-600:],
+            )
+            return None
+        return _load_wav_audio(audio_path)
+    except Exception as exc:
+        logger.warning("[ffmpeg_extract_audio] FFmpeg audio extraction error: %s", exc)
+        return None
+    finally:
+        try:
+            os.unlink(audio_path)
+        except OSError:
+            pass

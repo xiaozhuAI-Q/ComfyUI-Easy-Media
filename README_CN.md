@@ -1,76 +1,72 @@
-# ComfyUI Easy Media
-
 <div align="center">
-<a href="./README.md"><img src="https://img.shields.io/badge/🇬🇧English-e9e9e9"></a>
-<a href="./README_CN.md"><img src="https://img.shields.io/badge/🇨🇳中文简体-0b8cf5"></a>
-<br>
-</div>
 
-![Poster](https://github.com/user-attachments/assets/6c76433e-1893-4709-8738-acbed4438757)
+<img src="https://github.com/user-attachments/assets/fb602a3c-4a2a-48da-8c44-d36417f4633b" height="120">
+<h1>ComfyUI-Easy-Media</h1>
+
+[English Docs](./README.md) | [变更日志](./CHANGELOG_CN.md)
 
 这是一个用于简化媒体加载和视频处理管道构建的 ComfyUI 自定义节点包。它提供了直观的节点，通过用户友好的参数简化媒体资源的编辑与加载，从而更轻松地构建和配置视频处理工作流。
 
-## 安装
+[![][github-release-shield]][github-release-link]
+[![][github-stars-shield]][github-stars-link]
+[![][github-forks-shield]][github-forks-link]
+[![][github-license-shield]][github-license-link]
+
+<img src="https://github.com/user-attachments/assets/fd9638fc-7dee-4670-9b74-d7247ccea3dc" style="width:100%">
+</div>
+
+
+## 📦 安装
+
+> [!IMPORTANT]
+> 强烈建议您在安装此节点包前，先确保您的系统环境中已经安装了`FFmpeg`
 
 ```bash
 cd 你的ComfyUI路径/custom_nodes
 git clone https://github.com/yolain/ComfyUI-Easy-Media.git
 ```
 
-## 示例工作流
+## ✏️ 示例工作流
 
-安装完成后，打开 ComfyUI，在左侧侧边栏的 **Templates（模板）** 面板中即可找到内置的示例工作流，查找 **ComfyUI-Easy-Media** 相关条目。
+安装完成后，打开 ComfyUI，在左侧侧边栏的 `Templates（模板）` 面板中即可找到内置的示例工作流，查找 `ComfyUI-Easy-Media` 相关条目。
 
-## 更新日志
+## ✨ 核心功能
 
-### v1.0.4
+### 🎞️ 多轨编辑器 MultiTrack Editor
 
-- **【保存视频】** 增加 `hide&save` 选项，支持在保存视频的同时隐藏输出视频节点的输出
-- **【时间线编辑器：App模式】** 为 `prompt_override` 添加 [0-5s] 这种时间范围的解析支持
-- **【时间线编辑器：UI模式】** 子轨道添加`拖拽导入图片`的功能
-- **【时间线编辑器：UI模式】** 修复主轨中片段时长修改后子轨道如有图片应等比调整对应时长
-- **【时间线编辑器：UI模式】** 修复音频子目录导入后音频预览显示错误的问题
+![multiTrackEditor](https://github.com/user-attachments/assets/fc9ebcc6-d5e6-4f43-9825-6432c17d340d)
 
-### v1.0.3
+#### 轨道
 
-- **【Bernini临时方案】** 添加了`Bernini conditioning`和 `Bernini Model Patch`节点, 在未更新到ComfyUI支持Bernini时，提供了一个暂时方案
-- **【时间线编辑器：UI模式】** 修复`节点高度`在`画布刷新`和`分辨率选项`切换时会被恢复成默认值的bug
-- **【时间线编辑器：UI模式】** 修复`整体编辑`提示词模式下，有些情况下不能编辑片段内容的bug
-- **【时间线编辑器：UI模式】** 修复节点和轨道高度自适应的问题，右键菜单新增`克隆片段`，以方便 wan2的`berinini`和 `LTX2.3 R2V` 使用
-- **【LTXV制作参考视频】** 针对于多参考Lora[模型地址](https://huggingface.co/LiconStudio/LTX-2.3-Multiple-Subject-Reference)新添加的节点
+| 轨道类型    | 功能描述                                           |
+|-------------|----------------------------------------------------|
+| 任务轨道    | 支持t2v、i2v、r2v、v2v等多种任务类型定义                |
+| 视频轨道    | 导入并管理视频片段，支持多段视频拼接、智能分割镜头           |
+| 音频轨道    | 导入并管理音频片段，支持多段音频拼接                   |
+| 字幕轨道    | 暂未开发            |
 
-<details>
-<summary><b>v1.0.2</b></summary>
+- 任务片段是该节点的核心，工作流可根据任务轨道中片段的数量，设计自动循环执行
+- 视频轨道添加视频片段时也将自动添加对应时长的任务片段
+- 选中任务片段可设置图片、任务类型、用户提示词/系统提示词（根据任务类型会有默认值也可以自行编写）
+- 在 `多轨信息输出` 节点将输出视频的宽高尺寸、视频总帧数、帧率、任务数量
+- 在 `多轨任务输出` 节点将输出对应片段任务的 用户提示词&系统提示词，用户可自行抉择是否外接LLM节点以进行提示词扩写或结合片段中图像进行反推
 
-- **【时间线编辑器：App模式】** 修复当 prompt_override 未严格按照提示词格式书写时，理应按片段均分默认时长
-- **【时间线编辑器：App模式】** 修复只用一段音频填补完整时间线，需过滤掉空音频再进行判断
-- **【时间线编辑器：UI模式】** 修复当同个片段中包含不同格式时，输出资源与排序错误的问题
-</details>
 
-<details>
-<summary><b>v1.0.1</b></summary>
+#### 适用场景
 
-- 【工作流】添加wan2.2 循环片段示例工作流
-- 【前端优化】添加选中片段时出现+号可以往前或往后增加片段，并修复了一些已知bug
-- 【Bug修复】从output和子目录导入的图片链接有错误，导致编辑器中图片和输出都被过滤。
-</details>
+| 场景 | 描述 | 条件 
+|------|------|------|
+| 视频生成 | wan/bernini/ltx t2v、i2v、r2v | 任务轨道有片段即可 
+| 视频编辑 | bernini v2v、bernini vi2v、wan animate、ltx video replace、ltx iclora edit/inpaint/outpaint | 视频轨道片段及任务轨道片段必要
+| 视频参考 | wan scail2、wan animate、ltx iclora guide | 视频轨道片段及任务轨道片段必要
+| 视频配音 | wan infinititalk、longcat avatar、ltx ai2v | 任务轨道片段和音频轨道片段必要
+| 视频字幕 | 暂未开发 | -
 
-<details>
-<summary><b>v1.0.0</b></summary>
+- 仅统计了热门开源模型常见的生成类型，理论上任何视频模型流程都可以通过多轨编辑器作为前置处理工具
 
-- 【重要调整】 `时长与帧率`修改的输入框只有在`失焦`后才会生效（即修改数字后需要enter键确认或点击输入框以外区域才能变更成功，减少出错概率 ）
-- 【重要调整】`时长输入框`步进变更，当格式为帧数时步进为`4`、秒数时步进为`1`
-- 【重要调整】 片段时长编辑不再影响其他片段，如修改后所有片段相加的时长超出总时长，则总时长将自动适配到所有片段的时长总和。
-- 调整了时间编辑器中轨道自动适配高度，图像和音频片段需要双击才能进入媒体选择界面，避免误操作导致的频繁弹窗
-- 增加了动态参数注入设定，支持提示词模板格式+多媒体传入的方式使用时间轴编辑器
-</details>
 
-## 核心功能
+### 🎞️ 媒体时间线编辑器 Timeline Editor
 
-### 媒体时间线编辑器 Timeline Editor
-
-> 我认为媒体时间线编辑器组件更适合作为单独的模块节点来使用，会更具有通用性。此节点更聚焦于媒体的导入/编辑、时间轴相关的功能与交互，可以更好地为不同模型的视频流水线创作提供有利的帮助。<br>
-编辑器可用于视频单段的生成（如结合PromptRealy），也可用作分段生成，每一段可结合不同模型的视频流水线进行纯文本生成、单图生成、首尾帧生成、多帧生成、参考生成等）
 
 ![timelineEditor](https://github.com/user-attachments/assets/d7c9e894-6e7e-488c-90fb-d3aa8310419d)
 
@@ -105,9 +101,11 @@ git clone https://github.com/yolain/ComfyUI-Easy-Media.git
 ![dynamicInput2](https://github.com/user-attachments/assets/6dd84d52-1fd3-4b27-a890-2a0e22cecda4)
 
 
-### 从路径合并视频 MergeVideoFromPath
+### 🎞️ 从路径合并视频 MergeVideoFromPath
 
 > 该节点可以从指定路径加载视频文件，并将它们合并成一个视频输出。
+
+`截取帧数` 默认值为 `-1`，表示保留合并后的全部帧；当设置为大于 `0` 的数值时，节点会按合并后视频帧率换算为时长，并使用 FFmpeg 截取得到最终视频。
 
 **推荐安装 FFmpeg** 以获得最佳性能和转场质量：
 
@@ -128,11 +126,6 @@ sudo apt install ffmpeg
 
 ![保存视频](https://github.com/user-attachments/assets/30e2dcc3-9ed3-4d5f-bb15-69e50c3e8fca)
 > 已整合 SaveVideoRGBA 节点包的视频保存节点，并进行了功能完善。支持视频导出，可自定义输出路径、文件名前缀、帧率等参数。
-
-
-### 多轨道音视频编辑器 MultiTrack Editor
-
-> 规划中...
 
 
 
@@ -166,14 +159,41 @@ bun run build:release
 | easy timelineSegmentCount | 输出时间线中的片段总数 |
 | easy makeImageList | 将多个图片输入组合成图片列表 |
 | easy makeAudioList | 将多个音频输入组合成音频列表 |
+| easy makeVideoList | 将多个视频输入组合成视频列表 |
 | easy imageIndexesToIntList | 将逗号分隔的图片索引字符串转换为整数列表 |
 | easy saveVideo | 将图片和可选音频保存为视频文件 |
+| easy getAudioFromVideo | 从 VIDEO 输入中提取音频 |
 | easy mergeVideos | 串联多个兼容的 VIDEO 片段 |
 | easy mergeVideosFromPaths | 从文件路径列表加载并串联视频 |
+| easy multiTrackEditor | 多轨编辑器，编辑和传递多轨媒体数据 |
+| easy multiTrackInfoOutput | 输出多轨维度、时长、帧率和任务数量 |
+| easy multiTrackTaskOutput | 输出多轨任务段的提示词和任务范围媒体 |
+| easy makeRefsCompositeBySam3 | 使用 SAM3 检测提示的主体并组合参考图到画布 |
+| easy splitImages | 将图像列表或批次拆分为多个单图像输出 |
+| easy matchLine | 返回包含匹配文本的第一行的零基索引 |
 | LTXVAddGuidesFromBatchIndexes | 从批量图像添加引导图到潜在变量的指定帧索引 |
+| LTXVMakeRefVideo | 将参考图像批次扩展为 IC-LoRA 参考视频 |
+| BerniniModelPatch | 为 Wan 模型添加 Bernini 上下文潜在支持 |
+| BerniniConditioning | Bernini 上下文条件处理，用于视频/图像条件注入 |
+
+## Credits
+
+- [OmniShotCut](https://github.com/UVA-Computer-Vision-Lab/OmniShotCut)
 
 ## Source of Inspiration
 
 - [WhatDreamsCost-ComfyUI](https://github.com/WhatDreamsCost/WhatDreamsCost-ComfyUI)
 - [ComfyUI-PromptRelay](https://github.com/kijai/ComfyUI-PromptRelay)
 - [ComfyUI-Licon-MSR](https://github.com/liconstudio/ComfyUI-Licon-MSR)
+- [ComfyUI-RH-Bernini](https://github.com/RH-RunningHub/ComfyUI-RH-Bernini)
+
+
+<!-- LINK GROUP -->
+[github-forks-link]: https://github.com/yolain/ComfyUI-Easy-Media/network/members
+[github-forks-shield]: https://img.shields.io/github/forks/yolain/ComfyUI-Easy-Media?color=8ae8ff&labelColor=black&style=flat-square
+[github-license-link]: https://github.com/yolain/ComfyUI-Easy-Media/blob/master/LICENSE
+[github-license-shield]: https://img.shields.io/github/license/yolain/ComfyUI-Easy-Media?color=white&labelColor=black&style=flat-square
+[github-release-link]: https://github.com/yolain/ComfyUI-Easy-Media/releases
+[github-release-shield]: https://img.shields.io/github/v/release/yolain/ComfyUI-Easy-Media?color=f2ff59&labelColor=black&style=flat-square
+[github-stars-link]: https://github.com/yolain/ComfyUI-Easy-Media/network/stargazers
+[github-stars-shield]: https://img.shields.io/github/stars/yolain/ComfyUI-Easy-Media?color=ffcb47&labelColor=black&style=flat-square

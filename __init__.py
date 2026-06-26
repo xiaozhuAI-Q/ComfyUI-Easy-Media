@@ -48,12 +48,19 @@ class EasyMediaExtension(ComfyExtension):
     async def get_node_list(self) -> list[type[io.ComfyNode]]:
         nodes = [
             TimelineEditor,
+            MultiTrackEditor,
             TimelineInfoOutput,
+            MultiTrackInfoOutput,
+            MultiTrackTaskOutput,
             TimelineSegmentOutput,
             TimelineSegmentCount,
+            MakeRefsCompositeBySam3,
             ImageIndexesToIntList,
+            MatchLine,
+            SplitImages,
             MakeImageList,
             MakeAudioList,
+            MakeVideoList,
             # Wan
             BerniniModelPatch,
             # LTXV
@@ -61,6 +68,7 @@ class EasyMediaExtension(ComfyExtension):
             LTXVMakeRefVideo,
             # Video
             EasySaveVideo,
+            EasyGetAudioFromVideo,
             EasyMergeVideos,
             EasyMergeVideosFromPaths,
         ]

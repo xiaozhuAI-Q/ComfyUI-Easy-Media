@@ -97,8 +97,21 @@ describe('TaskSegmentEditor', () => {
     expect(screen.getByRole('option', { name: 'Reference (rv2v)' })).not.toBeNull()
   })
 
+  it('uses rv2v for reference mode with preset video', () => {
+    render(
+      <TaskSegmentEditor
+        segment={taskSegment()}
+        videoSegments={[videoSegment(2, 5, 'preset')]}
+        onContentChange={vi.fn()}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('combobox'))
+
+    expect(screen.getByRole('option', { name: 'Reference (rv2v)' })).not.toBeNull()
+  })
+
   it.each([
-    ['preset video', videoSegment(2, 5, 'preset')],
     ['video ending at the task start', videoSegment(-2, 0)],
     ['video starting at the task end', videoSegment(3, 5)],
   ])('uses r2v for reference mode with %s', (_caseName, video) => {
@@ -371,8 +384,9 @@ describe('TaskSegmentEditor', () => {
     const highlightedVariables = container.querySelectorAll('[data-system-prompt-variable="true"]')
 
     expect(textarea.readOnly).toBe(false)
-    expect(textarea.style.color).toBe('transparent')
-    expect(textarea.style.caretColor).toBe('var(--foreground)')
+    expect(textarea.classList.contains('text-transparent')).toBe(true)
+    expect(textarea.classList.contains('caret-foreground')).toBe(true)
+    expect(textarea.classList.contains('z-10')).toBe(true)
     expect(Array.from(highlightedVariables, (item) => item.textContent)).toEqual(['{subject}', '{style}'])
 
     fireEvent.change(textarea, { target: { value: 'Create {character}' } })

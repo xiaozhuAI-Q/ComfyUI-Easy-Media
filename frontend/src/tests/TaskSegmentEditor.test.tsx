@@ -256,31 +256,25 @@ describe('TaskSegmentEditor', () => {
     })
   })
 
-  it('shows a stable image overlay without changing the underlying grid layout', () => {
+  it('keeps the image grid stable without opening a hover focus preview', () => {
     render(<TaskSegmentEditor segment={taskSegment()} onContentChange={vi.fn()} />)
 
     const grid = screen.getByTestId('task-image-grid')
     const firstImage = screen.getByTestId('task-image-a')
     const secondImage = screen.getByTestId('task-image-b')
 
-    expect(grid.className).toContain('grid-cols-2')
+    expect(grid.className).toContain('grid-cols-3')
     expect(screen.queryByTestId('task-image-focus-preview')).toBeNull()
     fireEvent.mouseEnter(secondImage)
-    const preview = screen.getByTestId('task-image-focus-preview')
-    expect(grid.className).toContain('grid-cols-2')
-    expect(grid.className).not.toContain('grid-cols-1')
-    expect(preview.className).toContain('absolute')
-    expect(preview.className).toContain('inset-3')
-    expect(preview.className).toContain('pointer-events-none')
-    expect(preview.className).toContain('bg-black')
-    expect(preview.querySelector('img')?.className).toContain('object-contain')
+    expect(grid.className).toContain('grid-cols-3')
+    expect(screen.queryByTestId('task-image-focus-preview')).toBeNull()
     expect(secondImage.className).toContain('relative')
     expect(secondImage.className).toContain('cursor-pointer')
-    expect(secondImage.className).toContain('opacity-0')
-    expect(firstImage.className).toContain('opacity-0')
+    expect(secondImage.className).not.toContain('opacity-0')
+    expect(firstImage.className).not.toContain('opacity-0')
 
     fireEvent.mouseLeave(grid)
-    expect(grid.className).toContain('grid-cols-2')
+    expect(grid.className).toContain('grid-cols-3')
     expect(screen.queryByTestId('task-image-focus-preview')).toBeNull()
     expect(secondImage.className).toContain('relative')
     expect(secondImage.className).not.toContain('opacity-0')

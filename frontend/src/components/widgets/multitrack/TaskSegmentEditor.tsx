@@ -211,7 +211,6 @@ export function TaskSegmentEditor({
   const [editMode, setEditMode] = useState<EditMode>('individual')
   const [mediaSelectorOpen, setMediaSelectorOpen] = useState(false)
   const [isImageDragOver, setIsImageDragOver] = useState(false)
-  const [hoveredImageId, setHoveredImageId] = useState<string | null>(null)
   const [systemPromptOptions, setSystemPromptOptions] = useState<SystemPromptOption[] | null>(cachedSystemPromptOptions ?? null)
   const [systemPromptLoading, setSystemPromptLoading] = useState(false)
   const [isDurationEditing, setIsDurationEditing] = useState(false)
@@ -219,16 +218,6 @@ export function TaskSegmentEditor({
   const formattedDuration = formatMultiTrackDurationTimecode(duration, frameRate)
   const [durationInput, setDurationInput] = useState(formattedDuration)
   const images = taskImages(segment)
-  const focusedImageId = images.some((image) => image.id === hoveredImageId) ? hoveredImageId : null
-  const focusedImageIndex = focusedImageId === null ? -1 : images.findIndex((image) => image.id === focusedImageId)
-  const focusedImage = focusedImageIndex < 0 ? null : images[focusedImageIndex]
-  const focusedImageUrl = focusedImage ? mediaContentToViewUrl({
-    source_type: focusedImage.source_type ?? 'input',
-    file_path: focusedImage.file_path,
-    local_path: focusedImage.local_path,
-    url: focusedImage.url,
-    slot_name: focusedImage.slot_name,
-  }) : null
   const mode = segment.content.task_mode ?? 'default'
   const editableSegments = useMemo(() => (
     trackSegments && trackSegments.length > 0 ? trackSegments : [segment]
@@ -411,7 +400,6 @@ export function TaskSegmentEditor({
   }
 
   function handleDeleteImage(imageId: string) {
-    setHoveredImageId((current) => current === imageId ? null : current)
     onContentChange({ images: images.filter((image) => image.id !== imageId) })
   }
 
@@ -427,7 +415,7 @@ export function TaskSegmentEditor({
     window.open(url, '_blank', 'noopener,noreferrer')
   }
 
-  const imageGridColumns = images.length > 0 && images.length < 4 ? 'grid-cols-2' : 'grid-cols-3'
+  const imageGridColumns = 'grid-cols-3'
   const imagePickerSurfaceClass = isImageDragOver ? 'border-primary bg-accent/20' : 'border-border bg-muted/20'
 
   return (
@@ -478,7 +466,6 @@ export function TaskSegmentEditor({
                     imageGridColumns,
                     imagePickerSurfaceClass,
                   )}
-                  onMouseLeave={() => setHoveredImageId(null)}
                 >
                   {images.map((image, index) => {
                     const imageUrl = mediaContentToViewUrl({
@@ -493,14 +480,8 @@ export function TaskSegmentEditor({
                         key={image.id}
                         draggable
                         data-testid={`task-image-${image.id}`}
-                        className={cn(
-                          'task-image-grid-item group relative flex aspect-square cursor-pointer items-center justify-center overflow-hidden rounded-md border border-border bg-black',
-                          focusedImageId !== null && 'opacity-0',
-                          focusedImageId !== null && focusedImageId !== image.id && 'pointer-events-none',
-                        )}
-                        onMouseEnter={() => setHoveredImageId(image.id)}
+                        className="task-image-grid-item group relative flex aspect-square cursor-pointer items-center justify-center overflow-hidden rounded-md border border-border bg-black"
                         onDragStart={() => {
-                          setHoveredImageId(null)
                           draggedImageIdRef.current = image.id
                         }}
                         onDragOver={(event) => event.preventDefault()}
@@ -586,82 +567,12 @@ export function TaskSegmentEditor({
                       <Button
                         type="button"
                         variant="outline"
-                        className={cn(
-                          'task-image-grid-add aspect-square h-auto border-dashed text-muted-foreground',
-                          focusedImageId && 'pointer-events-none opacity-0',
-                        )}
+                        className="task-image-grid-add aspect-square h-auto border-dashed text-muted-foreground"
                         aria-label={t('multitrack.selectImage')}
                       >
                         <Plus className="h-7 w-7" />
                       </Button>
                     </PopoverTrigger>
-                  )}
-                  {focusedImage && (
-                    <div
-                      data-testid="task-image-focus-preview"
-                      className="pointer-events-none absolute inset-3 z-20 flex aspect-square items-center justify-center overflow-hidden rounded-md border border-border bg-black shadow-lg"
-                    >
-                      {focusedImageUrl && focusedImage.panorama_view ? (
-                        <PanoramaImagePreview
-                          imageId={focusedImage.id}
-                          imageUrl={focusedImageUrl}
-                          alt={imageDisplayName(focusedImage)}
-                          view={focusedImage.panorama_view}
-                        />
-                      ) : focusedImageUrl ? (
-                        <img
-                          src={focusedImageUrl}
-                          alt={imageDisplayName(focusedImage)}
-                          className="block h-full w-full object-contain"
-                          draggable={false}
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center px-2 text-center text-[8px] text-muted-foreground">
-                          {imageDisplayName(focusedImage)}
-                        </div>
-                      )}
-                      <div className="pointer-events-auto absolute right-1 top-1 z-10 flex gap-1">
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="ghost"
-                          className={cn(
-                            'h-6 w-6 cursor-pointer bg-background/70 hover:bg-background/90 [&_svg]:!size-4',
-                            focusedImage.panorama_view ? 'text-highlight' : 'text-foreground',
-                          )}
-                          aria-label={t('panorama.preview')}
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            onOpenPanorama?.(focusedImage.id)
-                          }}
-                        >
-                          <PanoramaIcon />
-                        </Button>
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="ghost"
-                          className="h-6 w-6 cursor-pointer bg-background/70 text-foreground hover:bg-background/90 [&_svg]:!size-3"
-                          aria-label={t('multitrack.previewImage')}
-                          onClick={() => handlePreviewImage(focusedImage)}
-                        >
-                          <Eye />
-                        </Button>
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="ghost"
-                          className="h-6 w-6 cursor-pointer bg-background/70 text-destructive hover:bg-background/90 hover:text-destructive [&_svg]:!size-3"
-                          aria-label={t('multitrack.deleteImage')}
-                          onClick={() => handleDeleteImage(focusedImage.id)}
-                        >
-                          <Trash2 />
-                        </Button>
-                      </div>
-                      <span className="absolute bottom-1 left-1 z-10 min-w-5 rounded-sm bg-black px-1.5 py-0.5 text-center text-[9px] font-semibold leading-none text-white">
-                        {focusedImageIndex}
-                      </span>
-                    </div>
                   )}
                 </div>
               )}

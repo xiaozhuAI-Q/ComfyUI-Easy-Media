@@ -415,7 +415,7 @@ export function TaskSegmentEditor({
     window.open(url, '_blank', 'noopener,noreferrer')
   }
 
-  const imageGridColumns = 'grid-cols-3'
+  const imageGridColumns = images.length > 0 && images.length < 4 ? 'grid-cols-2' : 'grid-cols-3'
   const imagePickerSurfaceClass = isImageDragOver ? 'border-primary bg-accent/20' : 'border-border bg-muted/20'
 
   return (

@@ -263,10 +263,10 @@ describe('TaskSegmentEditor', () => {
     const firstImage = screen.getByTestId('task-image-a')
     const secondImage = screen.getByTestId('task-image-b')
 
-    expect(grid.className).toContain('grid-cols-3')
+    expect(grid.className).toContain('grid-cols-2')
     expect(screen.queryByTestId('task-image-focus-preview')).toBeNull()
     fireEvent.mouseEnter(secondImage)
-    expect(grid.className).toContain('grid-cols-3')
+    expect(grid.className).toContain('grid-cols-2')
     expect(screen.queryByTestId('task-image-focus-preview')).toBeNull()
     expect(secondImage.className).toContain('relative')
     expect(secondImage.className).toContain('cursor-pointer')
@@ -274,10 +274,23 @@ describe('TaskSegmentEditor', () => {
     expect(firstImage.className).not.toContain('opacity-0')
 
     fireEvent.mouseLeave(grid)
-    expect(grid.className).toContain('grid-cols-3')
+    expect(grid.className).toContain('grid-cols-2')
     expect(screen.queryByTestId('task-image-focus-preview')).toBeNull()
     expect(secondImage.className).toContain('relative')
     expect(secondImage.className).not.toContain('opacity-0')
+  })
+
+  it('uses a three-column image grid once four or more task images are present', () => {
+    const segment = taskSegment()
+    segment.content.images = [
+      ...(segment.content.images ?? []),
+      { id: 'c', source_type: 'input', file_path: 'c.png', file_name: 'c.png' },
+      { id: 'd', source_type: 'input', file_path: 'd.png', file_name: 'd.png' },
+    ]
+
+    render(<TaskSegmentEditor segment={segment} onContentChange={vi.fn()} />)
+
+    expect(screen.getByTestId('task-image-grid').className).toContain('grid-cols-3')
   })
 
   it('uses locale messages for task mode and prompt labels', () => {

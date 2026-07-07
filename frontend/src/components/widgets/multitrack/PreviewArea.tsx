@@ -166,7 +166,7 @@ function getActiveTaskPrompt(data: TrackData, currentTime: number): ActiveTaskPr
     ))
     if (!segment) continue
 
-    const prompt = segment.content.user_prompt ?? segment.content.text ?? ''
+    const prompt = segment.content.user_prompt ?? ''
     return { segmentId: segment.id, prompt, taskMode: segment.content.task_mode ?? 'default' }
   }
 
@@ -491,12 +491,16 @@ export function PreviewArea({
     setActiveTaskMediaSelectorOpen(false)
   }
 
-  function commitTaskPromptEditing() {
+  function handleTaskPromptInput(text: string) {
     if (!editingTaskPrompt) return
+    setEditingTaskPrompt({ ...editingTaskPrompt, text })
     onTrackSegmentsContentChange?.([{
       segmentId: editingTaskPrompt.segmentId,
-      patch: { user_prompt: editingTaskPrompt.text },
+      patch: { user_prompt: text },
     }])
+  }
+
+  function commitTaskPromptEditing() {
     setEditingTaskPrompt(null)
   }
 
@@ -950,7 +954,7 @@ export function PreviewArea({
             onMouseDown={(event) => event.stopPropagation()}
             onClick={(event) => event.stopPropagation()}
             onDoubleClick={(event) => event.stopPropagation()}
-            onChange={(event) => setEditingTaskPrompt({ ...editing, text: event.currentTarget.value })}
+            onChange={(event) => handleTaskPromptInput(event.currentTarget.value)}
             onBlur={commitTaskPromptEditing}
             onKeyDown={(event) => {
               if (event.key === 'Escape') {

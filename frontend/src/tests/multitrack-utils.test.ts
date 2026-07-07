@@ -255,9 +255,10 @@ describe('multitrack utilities', () => {
     expect(normalized.tracks[0].task_mode).toBe('edit')
     expect(normalized.tracks[0].segments[0].content).toMatchObject({
       task_mode: 'default',
-      text: 'Prompt',
+      user_prompt: 'Prompt',
       images: [],
     })
+    expect(normalized.tracks[0].segments[0].content.text).toBeUndefined()
   })
 
   it('does not migrate legacy second-based multitrack time fields', () => {
@@ -545,7 +546,7 @@ describe('multitrack utilities', () => {
       start_frame: 0,
       end_frame: 2,
       color: data.tracks[0].color,
-      content: { media_type: 'none' as const, task_mode: 'default' as const, text: '' },
+      content: { media_type: 'none' as const, task_mode: 'default' as const, user_prompt: '' },
     }
     const videoSegment = {
       id: 'video-keep',
@@ -564,12 +565,12 @@ describe('multitrack utilities', () => {
 
     const updated = updateMultiTrackSegmentContent(trackData, 'task-selected', {
       task_mode: 'ref',
-      text: 'New prompt',
+      user_prompt: 'New prompt',
     })
 
     expect(updated.tracks[0].segments[0].content).toMatchObject({
       task_mode: 'ref',
-      text: 'New prompt',
+      user_prompt: 'New prompt',
     })
     expect(updated.tracks[1].segments[0]).toBe(videoSegment)
   })

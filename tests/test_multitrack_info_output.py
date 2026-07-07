@@ -1179,7 +1179,7 @@ def test_multitrack_task_output_schema_and_task_media_selection():
                 "id": "task-1", "start_frame": 2, "end_frame": 6,
                 "content": {
                     "task_mode": "ref",
-                    "text": "make it move",
+                    "user_prompt": "make it move",
                     "system_prompt": "custom template",
                     "images": [{"media_index": 1}, {"media_index": 2}],
                 },
@@ -1253,7 +1253,7 @@ def test_multitrack_task_output_prompt_relay_uses_task_range_without_images():
         "tracks": [{"type": "task", "segments": [{
             "start_frame": 5,
             "end_frame": 10,
-            "content": {"task_mode": "default", "text": "single prompt", "images": []},
+            "content": {"task_mode": "default", "user_prompt": "single prompt", "images": []},
         }]}],
     }
 

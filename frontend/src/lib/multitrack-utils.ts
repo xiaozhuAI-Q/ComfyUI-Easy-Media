@@ -457,7 +457,7 @@ export function applyCombinedTaskTexts(
   if (normalizedParts.length === segments.length) {
     return segments.map((segment, index) => ({
       ...segment,
-      content: { ...segment.content, text: normalizedParts[index] },
+      content: { ...segment.content, user_prompt: normalizedParts[index] },
     }))
   }
 
@@ -467,7 +467,7 @@ export function applyCombinedTaskTexts(
   const remainder = span % count
   let cursor = 0
 
-  return normalizedParts.map((text, index) => {
+  return normalizedParts.map((userPrompt, index) => {
     const existing = segments[index]
     const size = base + (index < remainder ? 1 : 0)
     const startFrame = cursor
@@ -478,12 +478,12 @@ export function applyCombinedTaskTexts(
       end_frame: cursor,
       color: existing?.color ?? color,
       content: existing
-        ? { ...existing.content, text }
+        ? { ...existing.content, user_prompt: userPrompt }
         : {
             media_type: 'none',
             task_mode: MULTITRACK_DEFAULT_TASK_MODE,
             images: [],
-            text,
+            user_prompt: userPrompt,
           },
     }
   })
@@ -1385,6 +1385,19 @@ function normalizeTrackSegments(track: LegacyMultiTrack): MultiTrackSegment[] {
     .sort((a, b) => a.start_frame - b.start_frame)
 }
 
+function normalizeTaskSegmentContent(content: MultiTrackSegment['content']): MultiTrackSegment['content'] {
+  const normalized = {
+    ...content,
+    task_mode: normalizeTaskMode(content.task_mode),
+    images: Array.isArray(content.images) ? content.images : [],
+  }
+  if (normalized.user_prompt === undefined && typeof normalized.text === 'string') {
+    normalized.user_prompt = normalized.text
+  }
+  delete normalized.text
+  return normalized
+}
+
 function normalizeTotalLength(tracks: MultiTrack[], frameRate: number): number {
   return calculateTotalLength(tracks, frameRate)
 }
@@ -1443,11 +1456,7 @@ export function normalizeTrackData(raw: LegacyTrackData): TrackData {
           color: track.color === 'var(--muted)' ? MULTITRACK_TRACK_COLORS.task : track.color,
           segments: segments.map((segment) => ({
             ...segment,
-            content: {
-              ...segment.content,
-              task_mode: normalizeTaskMode(segment.content.task_mode),
-              images: Array.isArray(segment.content.images) ? segment.content.images : [],
-            },
+            content: normalizeTaskSegmentContent(segment.content),
           })),
         }
       }
@@ -1469,11 +1478,7 @@ export function normalizeTrackData(raw: LegacyTrackData): TrackData {
       color: MULTITRACK_TRACK_COLORS.task,
       segments: segments.map((segment) => ({
         ...segment,
-        content: {
-          ...segment.content,
-          task_mode: normalizeTaskMode(segment.content.task_mode),
-          images: Array.isArray(segment.content.images) ? segment.content.images : [],
-        },
+        content: normalizeTaskSegmentContent(segment.content),
       })),
     }
   })

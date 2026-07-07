@@ -26,7 +26,7 @@ function taskSegment(): MultiTrackSegment {
     content: {
       media_type: 'none',
       task_mode: 'default',
-      text: 'Initial prompt',
+      user_prompt: 'Initial prompt',
       images: [
         { id: 'a', source_type: 'input', file_path: 'a.png', file_name: 'a.png' },
         { id: 'b', source_type: 'input', file_path: 'b.png', file_name: 'b.png' },
@@ -44,7 +44,7 @@ function secondTaskSegment(): MultiTrackSegment {
     content: {
       media_type: 'none',
       task_mode: 'default',
-      text: 'Second prompt',
+      user_prompt: 'Second prompt',
       images: [],
     },
   }
@@ -80,7 +80,7 @@ describe('TaskSegmentEditor', () => {
     })
 
     expect(onContentChange).toHaveBeenCalledWith({ task_mode: 'ref' })
-    expect(onContentChange).toHaveBeenCalledWith({ text: 'New prompt' })
+    expect(onContentChange).toHaveBeenCalledWith({ user_prompt: 'New prompt' })
   })
 
   it('uses rv2v for reference mode when a non-preset video overlaps the task range', () => {
@@ -461,8 +461,8 @@ describe('TaskSegmentEditor', () => {
     })
 
     expect(onTrackSegmentsContentChange).toHaveBeenCalledWith([
-      { segmentId: 'task-segment', patch: { text: 'First rewritten' } },
-      { segmentId: 'task-segment-2', patch: { text: 'Second rewritten' } },
+      { segmentId: 'task-segment', patch: { user_prompt: 'First rewritten' } },
+      { segmentId: 'task-segment-2', patch: { user_prompt: 'Second rewritten' } },
     ])
   })
 
@@ -491,11 +491,11 @@ describe('TaskSegmentEditor', () => {
     expect(updated.map(({ start_frame, end_frame, content }) => ({
       start_frame,
       end_frame,
-      text: content.text,
+      user_prompt: content.user_prompt,
     }))).toEqual([
-      { start_frame: 0, end_frame: 4, text: 'First pasted' },
-      { start_frame: 4, end_frame: 7, text: 'Second pasted' },
-      { start_frame: 7, end_frame: 10, text: 'Third pasted' },
+      { start_frame: 0, end_frame: 4, user_prompt: 'First pasted' },
+      { start_frame: 4, end_frame: 7, user_prompt: 'Second pasted' },
+      { start_frame: 7, end_frame: 10, user_prompt: 'Third pasted' },
     ])
     expect(updated[0].id).toBe('task-segment')
     expect(updated[1].id).toBe('task-segment-2')
@@ -510,7 +510,7 @@ describe('TaskSegmentEditor', () => {
       id: 'task-segment',
       start_frame: 0,
       end_frame: 10,
-      content: { text: '' },
+      content: { user_prompt: '' },
     })
   })
 

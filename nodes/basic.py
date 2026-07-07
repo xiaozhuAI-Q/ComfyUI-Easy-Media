@@ -1951,7 +1951,7 @@ class MultiTrackTaskOutput(io.ComfyNode):
                 )
 
         task_type = _multitrack_task_type(task, len(selected_images), has_video)
-        prompt = content.get("text", "")
+        prompt = content.get("user_prompt") or content.get("text", "")
         system_prompt, api_prompt, json_mode = build_prompt_request(
             task_type,
             prompt,

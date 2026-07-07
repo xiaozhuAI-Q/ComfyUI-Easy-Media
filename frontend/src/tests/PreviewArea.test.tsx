@@ -415,7 +415,6 @@ describe('PreviewArea', () => {
         content: {
           media_type: 'none',
           user_prompt: 'A long active task prompt that should stay on one preview line and truncate when needed',
-          text: 'Fallback prompt',
         },
       }],
     })
@@ -446,13 +445,12 @@ describe('PreviewArea', () => {
     const editor = screen.getByTestId('task-prompt-editor') as HTMLTextAreaElement
     expect(editor.value).toBe('A long active task prompt that should stay on one preview line and truncate when needed')
     fireEvent.change(editor, { target: { value: 'Updated preview prompt' } })
-    fireEvent.blur(editor)
 
     expect(onTrackSegmentsContentChange).toHaveBeenCalledWith([{
       segmentId: 'active-task',
       patch: { user_prompt: 'Updated preview prompt' },
     }])
-    expect(screen.getByTestId('task-prompt-text').textContent).toContain('A long active task prompt')
+    expect((screen.getByTestId('task-prompt-editor') as HTMLTextAreaElement).value).toBe('Updated preview prompt')
   })
 
   it('shows and updates the active task mode from the prompt bar', () => {
@@ -540,7 +538,6 @@ describe('PreviewArea', () => {
 
     fireEvent.doubleClick(screen.getByTestId('task-prompt-text'))
     fireEvent.change(screen.getByTestId('task-prompt-editor'), { target: { value: 'Prompt from preview' } })
-    fireEvent.blur(screen.getByTestId('task-prompt-editor'))
 
     expect(onTrackSegmentsContentChange).toHaveBeenCalledWith([{
       segmentId: 'active-task',

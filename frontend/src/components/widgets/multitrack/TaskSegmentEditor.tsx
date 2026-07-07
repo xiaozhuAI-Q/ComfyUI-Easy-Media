@@ -188,12 +188,12 @@ export function TaskSegmentEditor({
   const editableSegments = useMemo(() => (
     trackSegments && trackSegments.length > 0 ? trackSegments : [segment]
   ), [segment, trackSegments])
-  const combinedPromptValue = editableSegments.map((item) => item.content.text ?? '').join('|')
+  const combinedPromptValue = editableSegments.map((item) => item.content.user_prompt ?? '').join('|')
   const [combinedPromptInput, setCombinedPromptInput] = useState(combinedPromptValue)
   const taskIndex = Math.max(0, editableSegments.findIndex((item) => item.id === segment.id))
   const promptValue = editMode === 'combined'
     ? combinedPromptInput
-    : segment.content.text ?? ''
+    : segment.content.user_prompt ?? ''
   const segmentHasVideoInRange = hasVideoInRange(segment, videoSegments)
   const systemPromptDefault = getDefaultSystemPromptForSegment(segment, systemPromptOptions ?? [], videoSegments)
   const systemPromptValue = editMode === 'combined'
@@ -321,7 +321,7 @@ export function TaskSegmentEditor({
     }
     onTrackSegmentsContentChange?.(editableSegments.map((item, index) => ({
       segmentId: item.id,
-      patch: { text: parts[index] ?? '' },
+      patch: { user_prompt: parts[index] ?? '' },
     })))
   }
 
@@ -332,7 +332,7 @@ export function TaskSegmentEditor({
       commitCombinedPrompt(value)
       return
     }
-    onContentChange({ text: value })
+    onContentChange({ user_prompt: value })
   }
 
   function handleCombinedPromptShortcut(event: React.KeyboardEvent<HTMLTextAreaElement>) {

@@ -23,9 +23,10 @@ vi.mock('@/lib/video-utils', () => ({
 }))
 
 vi.mock('@/components/widgets/multitrack/PreviewArea', () => ({
-  PreviewArea: ({ selectedSegment, onSelectedSegmentContentChange, onGenerateSubtitleSpeech }: {
+  PreviewArea: ({ selectedSegment, onSelectedSegmentContentChange, onTrackSegmentsContentChange, onGenerateSubtitleSpeech }: {
     selectedSegment: { trackType: string; segment: TrackData['tracks'][number]['segments'][number] } | null
     onSelectedSegmentContentChange: (patch: unknown) => void
+    onTrackSegmentsContentChange: (updates: Array<{ segmentId: string; patch: unknown }>) => void
     onGenerateSubtitleSpeech?: (
       segment: TrackData['tracks'][number]['segments'][number],
       settings: {
@@ -71,6 +72,22 @@ vi.mock('@/components/widgets/multitrack/PreviewArea', () => ({
           })}
         >
           generate subtitle speech
+        </button>
+      ) : null}
+      {selectedSegment?.trackType === 'task' ? (
+        <div data-testid="selected-task-user-prompt">
+          {selectedSegment.segment.content.user_prompt ?? ''}
+        </div>
+      ) : null}
+      {!selectedSegment ? (
+        <button
+          type="button"
+          onClick={() => onTrackSegmentsContentChange([{
+            segmentId: 'task-active',
+            patch: { user_prompt: 'Preview prompt update' },
+          }])}
+        >
+          update active preview prompt
         </button>
       ) : null}
     </div>
@@ -127,6 +144,17 @@ vi.mock('@/components/widgets/multitrack/TrackArea', () => ({
         {taskTrack && segment ? (
           <button type="button" onClick={() => onSplitTaskSegment(segment.id)}>
             split task
+          </button>
+        ) : null}
+        {taskTrack && segment ? (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation()
+              onSelectSegment(segment.id)
+            }}
+          >
+            select task segment
           </button>
         ) : null}
         <button type="button" onClick={() => onAddTrack('audio')}>add audio track</button>
@@ -413,7 +441,7 @@ describe('MultiTrackWidget', () => {
       start_frame: 0,
       end_frame: 160,
       color: data.tracks[0].color,
-      content: { media_type: 'none', task_mode: 'default', text: 'Prompt' },
+      content: { media_type: 'none', task_mode: 'default', user_prompt: 'Prompt' },
     }]
     const onChange = vi.fn()
 
@@ -432,7 +460,61 @@ describe('MultiTrackWidget', () => {
       [0, 80],
       [80, 160],
     ])
-    expect(updated.tracks[0].segments.every((segment) => segment.content.text === 'Prompt')).toBe(true)
+    expect(updated.tracks[0].segments.every((segment) => segment.content.user_prompt === 'Prompt')).toBe(true)
+  })
+
+  it('updates the active task user prompt from the unselected preview area', () => {
+    const data = createDefaultTrackData()
+    data.frame_rate = 24
+    data.total_length = 48
+    data.tracks[0].segments = [
+      {
+        id: 'task-before',
+        start_frame: 0,
+        end_frame: 24,
+        color: data.tracks[0].color,
+        content: { media_type: 'none', task_mode: 'default', user_prompt: 'Before' },
+      },
+      {
+        id: 'task-active',
+        start_frame: 24,
+        end_frame: 48,
+        color: data.tracks[0].color,
+        content: { media_type: 'none', task_mode: 'default', user_prompt: 'Original active' },
+      },
+    ]
+    const onChange = vi.fn()
+
+    render(<MultiTrackWidget {...widgetProps()} value={data} onChange={onChange} />)
+    fireEvent.click(screen.getByRole('button', { name: 'update active preview prompt' }))
+
+    const updated = onChange.mock.lastCall?.[0] as TrackData
+    expect(updated.tracks[0].segments[0].content.user_prompt).toBe('Before')
+    expect(updated.tracks[0].segments[1].content.user_prompt).toBe('Preview prompt update')
+    expect(updated.tracks[0].segments[1].content.text).toBeUndefined()
+  })
+
+  it('shows preview-edited user prompt after selecting the same task segment', () => {
+    const data = createDefaultTrackData()
+    data.frame_rate = 24
+    data.total_length = 48
+    data.tracks[0].segments = [{
+      id: 'task-active',
+      start_frame: 0,
+      end_frame: 48,
+      color: data.tracks[0].color,
+      content: { media_type: 'none', task_mode: 'default', user_prompt: '' },
+    }]
+    const onChange = vi.fn()
+    const props = widgetProps()
+    const view = render(<MultiTrackWidget {...props} value={data} onChange={onChange} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'update active preview prompt' }))
+    const updated = onChange.mock.lastCall?.[0] as TrackData
+    view.rerender(<MultiTrackWidget {...props} value={updated} onChange={onChange} />)
+    fireEvent.click(screen.getByRole('button', { name: 'select task segment' }))
+
+    expect(screen.getByTestId('selected-task-user-prompt').textContent).toBe('Preview prompt update')
   })
 
   it('resets local redo history when the canvas restores a different widget value', () => {
@@ -528,7 +610,7 @@ describe('MultiTrackWidget', () => {
       start_frame: startFrame,
       end_frame: endFrame,
       color: data.tracks[0].color,
-      content: { media_type: 'none', task_mode: 'default', text: `Task ${index}` },
+      content: { media_type: 'none', task_mode: 'default', user_prompt: `Task ${index}` },
     }))
     data.tracks[1].segments = [{
       id: 'video',

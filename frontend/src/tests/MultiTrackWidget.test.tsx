@@ -23,9 +23,20 @@ vi.mock('@/lib/video-utils', () => ({
 }))
 
 vi.mock('@/components/widgets/multitrack/PreviewArea', () => ({
-  PreviewArea: ({ selectedSegment, onSelectedSegmentContentChange }: {
-    selectedSegment: { trackType: string } | null
+  PreviewArea: ({ selectedSegment, onSelectedSegmentContentChange, onGenerateSubtitleSpeech }: {
+    selectedSegment: { trackType: string; segment: TrackData['tracks'][number]['segments'][number] } | null
     onSelectedSegmentContentChange: (patch: unknown) => void
+    onGenerateSubtitleSpeech?: (
+      segment: TrackData['tracks'][number]['segments'][number],
+      settings: {
+        model: 'VoxCPM2'
+        prompt: string
+        cfg: number
+        steps: number
+        referenceAudio: string
+        referenceAudioSourceType: 'input'
+      },
+    ) => Promise<void>
   }) => (
     <div data-testid="preview-area">
       {selectedSegment?.trackType === 'subtitle' ? (
@@ -37,6 +48,7 @@ vi.mock('@/components/widgets/multitrack/PreviewArea', () => ({
               color: '#ff0000',
               outline_color: '#000000',
               background_color: 'rgba(0, 0, 0, 0.5)',
+              background_opacity: 0.7,
               x: 0.2,
               y: 0.75,
               width: 0.6,
@@ -44,6 +56,21 @@ vi.mock('@/components/widgets/multitrack/PreviewArea', () => ({
           })}
         >
           update selected subtitle style
+        </button>
+      ) : null}
+      {selectedSegment?.trackType === 'subtitle' ? (
+        <button
+          type="button"
+          onClick={() => onGenerateSubtitleSpeech?.(selectedSegment.segment, {
+            model: 'VoxCPM2',
+            prompt: 'calm',
+            cfg: 2.4,
+            steps: 13,
+            referenceAudio: 'voice.wav',
+            referenceAudioSourceType: 'input',
+          })}
+        >
+          generate subtitle speech
         </button>
       ) : null}
     </div>
@@ -206,11 +233,28 @@ vi.mock('@/components/widgets/multitrack/TrackArea', () => ({
 }))
 
 vi.mock('@/components/widgets/multitrack/MultiTrackToolbar', () => ({
-  MultiTrackToolbar: ({ onToggleTimeline, canDelete, onDeleteSelected, onCutAtCurrentTime, canUndo, canRedo, onUndo, onRedo }: {
+  MultiTrackToolbar: ({
+    onToggleTimeline,
+    canDelete,
+    onDeleteSelected,
+    onCutAtCurrentTime,
+    canTrimLeft,
+    canTrimRight,
+    onTrimLeftAtCurrentTime,
+    onTrimRightAtCurrentTime,
+    canUndo,
+    canRedo,
+    onUndo,
+    onRedo,
+  }: {
     onToggleTimeline: () => void
     canDelete: boolean
     onDeleteSelected: () => void
     onCutAtCurrentTime: () => void
+    canTrimLeft: boolean
+    canTrimRight: boolean
+    onTrimLeftAtCurrentTime: () => void
+    onTrimRightAtCurrentTime: () => void
     canUndo: boolean
     canRedo: boolean
     onUndo: () => void
@@ -228,6 +272,8 @@ vi.mock('@/components/widgets/multitrack/MultiTrackToolbar', () => ({
       >
         cut current time
       </button>
+      <button type="button" disabled={!canTrimLeft} onClick={onTrimLeftAtCurrentTime}>trim left current time</button>
+      <button type="button" disabled={!canTrimRight} onClick={onTrimRightAtCurrentTime}>trim right current time</button>
       <button type="button" onClick={onUndo} disabled={!canUndo}>undo history</button>
       <button type="button" onClick={onRedo} disabled={!canRedo}>redo history</button>
     </div>
@@ -723,6 +769,7 @@ describe('MultiTrackWidget', () => {
               color: '#ffffff',
               outline_color: '#000000',
               background_color: 'rgba(0, 0, 0, 0)',
+              background_opacity: 0.7,
               x: 0.15,
               y: 0.8,
               width: 0.7,
@@ -741,6 +788,7 @@ describe('MultiTrackWidget', () => {
               font_size: 10,
               color: '#00ff00',
               background_color: 'transparent',
+              background_opacity: 0.7,
               x: 0.3,
               y: 0.7,
               width: 0.5,
@@ -763,6 +811,7 @@ describe('MultiTrackWidget', () => {
         color: '#ff0000',
         outline_color: '#000000',
         background_color: 'rgba(0, 0, 0, 0.5)',
+        background_opacity: 0.7,
         x: 0.2,
         y: 0.75,
         width: 0.6,
@@ -772,6 +821,7 @@ describe('MultiTrackWidget', () => {
         color: '#ff0000',
         outline_color: '#000000',
         background_color: 'rgba(0, 0, 0, 0.5)',
+        background_opacity: 0.7,
         x: 0.2,
         y: 0.75,
         width: 0.6,
@@ -810,6 +860,7 @@ describe('MultiTrackWidget', () => {
           color: '#ffffff',
           outline_color: '#000000',
           background_color: 'rgba(0, 0, 0, 0)',
+          background_opacity: 0.7,
           x: 0.125,
           y: 0.8,
           width: 0.75,
@@ -896,6 +947,65 @@ describe('MultiTrackWidget', () => {
         media_type: 'subtitle',
         text: 'Hello',
         subtitle_style: expect.objectContaining({ font_size: 12 }),
+      },
+    })
+    vi.unstubAllGlobals()
+  })
+
+  it('generates selected subtitle speech and adds the output to an audio track', async () => {
+    const data = createDefaultTrackData()
+    data.total_length = 120
+    data.tracks.push({
+      id: 'subtitle-track',
+      name: 'Subtitle 0',
+      type: 'subtitle',
+      color: '#9D4937',
+      muted: false,
+      locked: false,
+      segments: [{
+        id: 'subtitle',
+        start_frame: 24,
+        end_frame: 48,
+        color: '#9D4937',
+        content: { media_type: 'subtitle', text: 'Hello 123' },
+      }],
+    })
+    const onChange = vi.fn()
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        file_path: 'easy_media/Hello.wav',
+        source_type: 'output',
+        absolute_path: '/tmp/output/easy_media/Hello.wav',
+        message: 'Audio generated and saved to /tmp/output/easy_media/Hello.wav',
+        duration: 1,
+      }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<MultiTrackWidget {...widgetProps()} value={data} onChange={onChange} />)
+    fireEvent.click(screen.getByRole('button', { name: 'select subtitle segment' }))
+    fireEvent.click(screen.getByRole('button', { name: 'generate subtitle speech' }))
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled())
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toMatchObject({
+      text: 'Hello 123',
+      model: 'VoxCPM2',
+      prompt: 'calm',
+      cfg: 2.4,
+      steps: 13,
+      reference_audio_path: 'voice.wav',
+      reference_audio_source_type: 'input',
+    })
+    const updated = onChange.mock.lastCall?.[0] as TrackData
+    expect(updated.tracks.find((track) => track.type === 'audio')?.segments[0]).toMatchObject({
+      start_frame: 24,
+      end_frame: 48,
+      content: {
+        media_type: 'audio',
+        source_type: 'output',
+        file_path: 'easy_media/Hello.wav',
       },
     })
     vi.unstubAllGlobals()
@@ -1066,6 +1176,78 @@ describe('MultiTrackWidget', () => {
     expect(updated.tracks[0].segments).toHaveLength(1)
     expect(updated.tracks[1].segments).toHaveLength(2)
     expect(updated.tracks[1].segments.map((segment) => [segment.start_frame, segment.end_frame])).toEqual([[0, 5], [5, 10]])
+  })
+
+  it.each([
+    ['trim left current time', 'start_frame', 5],
+    ['trim right current time', 'end_frame', 5],
+  ] as const)('trims all active track segments from %s when no segment is selected', (buttonName, frameKey, expectedFrame) => {
+    const data = createDefaultTrackData()
+    data.tracks[0].segments = [{
+      id: 'task-active',
+      start_frame: 0,
+      end_frame: 10,
+      color: data.tracks[0].color,
+      content: { media_type: 'none', task_mode: 'default' },
+    }]
+    data.tracks[1].segments = [{
+      id: 'video-active',
+      start_frame: 0,
+      end_frame: 10,
+      color: data.tracks[1].color,
+      content: { media_type: 'video', duration: 10 },
+    }]
+    const audioTrack = data.tracks.find((track) => track.type === 'audio')
+    if (audioTrack) {
+      audioTrack.segments = [{
+        id: 'audio-active',
+        start_frame: 0,
+        end_frame: 10,
+        color: audioTrack.color,
+        content: { media_type: 'audio', duration: 10 },
+      }]
+    }
+    const onChange = vi.fn()
+
+    render(<MultiTrackWidget {...widgetProps()} value={data} onChange={onChange} />)
+    fireEvent.click(screen.getByTestId('multitrack-ruler'))
+    const trimButton = screen.getByRole('button', { name: buttonName })
+    expect((trimButton as HTMLButtonElement).disabled).toBe(false)
+    fireEvent.click(trimButton)
+
+    const updated = onChange.mock.lastCall?.[0] as TrackData
+    expect(updated.tracks[0].segments[0][frameKey]).toBe(expectedFrame)
+    expect(updated.tracks[1].segments[0][frameKey]).toBe(expectedFrame)
+    const updatedAudioTrack = updated.tracks.find((track) => track.type === 'audio')
+    if (updatedAudioTrack) expect(updatedAudioTrack.segments[0][frameKey]).toBe(expectedFrame)
+  })
+
+  it('trims a selected video segment and keeps the matching task aligned', () => {
+    const data = createDefaultTrackData()
+    data.tracks[0].segments = [{
+      id: 'task-active',
+      start_frame: 0,
+      end_frame: 10,
+      color: data.tracks[0].color,
+      content: { media_type: 'none', task_mode: 'default' },
+    }]
+    data.tracks[1].segments = [{
+      id: 'video-active',
+      start_frame: 0,
+      end_frame: 10,
+      color: data.tracks[1].color,
+      content: { media_type: 'video', duration: 10 },
+    }]
+    const onChange = vi.fn()
+
+    render(<MultiTrackWidget {...widgetProps()} value={data} onChange={onChange} />)
+    fireEvent.click(screen.getByTestId('multitrack-ruler'))
+    fireEvent.click(screen.getByRole('button', { name: 'select video segment' }))
+    fireEvent.click(screen.getByRole('button', { name: 'trim left current time' }))
+
+    const updated = onChange.mock.lastCall?.[0] as TrackData
+    expect(updated.tracks[0].segments[0].start_frame).toBe(5)
+    expect(updated.tracks[1].segments[0].start_frame).toBe(5)
   })
 
   it('clears selected segment ids after deleting selected segments', () => {

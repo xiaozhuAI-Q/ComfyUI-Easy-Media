@@ -20,8 +20,11 @@ import {
   type SelectedMultiTrackSegment,
 } from '@/lib/multitrack-utils'
 import { useT } from '@/lib/i18n'
-import { AudioWaveform } from '@/components/widgets/timeline/AudioWaveform'
 import { mediaContentToViewUrl } from '@/lib/media-url'
+import {
+  DEFAULT_SUBTITLE_SPEECH_SETTINGS,
+  type SubtitleSpeechSettings,
+} from '@/lib/subtitle-speech'
 import {
   createTaskImage,
   MAX_TASK_IMAGES,
@@ -40,8 +43,10 @@ import { PanoramaIcon } from '@/components/widgets/panorama/PanoramaIcon'
 import { PanoramaImagePreview } from '@/components/widgets/panorama/PanoramaImagePreview'
 import { TaskSegmentEditor } from './TaskSegmentEditor'
 import { VideoPreview } from './VideoPreview'
+import { SubtitleSettingsPanel } from './SubtitleSettingsPanel'
 
 const RESOLUTION_POLL_INTERVAL_MS = 250
+const SUBTITLE_SETTINGS_PANEL_TOOLBAR_INSET = 'calc(max(35%, 18rem) + 12px)'
 
 interface PreviewAreaProps {
   data: TrackData
@@ -59,6 +64,10 @@ interface PreviewAreaProps {
   onTrackSegmentsContentChange?: (updates: Array<{ segmentId: string; patch: Partial<MultiTrackSegmentContent> }>) => void
   onTaskTrackSegmentsChange?: (segments: MultiTrackSegment[]) => void
   onSelectedSegmentDurationChange: (duration: number) => void
+  onGenerateSubtitleSpeech?: (
+    segment: MultiTrackSegment,
+    settings: SubtitleSpeechSettings,
+  ) => Promise<void>
 }
 
 function resolutionInputSignature(input: unknown): string {
@@ -167,7 +176,7 @@ function getActiveTaskPrompt(data: TrackData, currentTime: number): ActiveTaskPr
 function getActiveSubtitleSegments(data: TrackData, currentTime: number): MultiTrackSegment[] {
   const currentFrame = snapTimeToFrame(currentTime, data.frame_rate)
   return data.tracks.flatMap((track) => {
-    if (track.type !== 'subtitle') return []
+    if (track.type !== 'subtitle' || track.visible === false) return []
     return track.segments.filter((item) => (
       currentFrame >= item.start_frame && currentFrame < item.end_frame
     ))
@@ -181,6 +190,7 @@ function clampSubtitleStyle(style: MultiTrackSubtitleStyle): MultiTrackSubtitleS
     ...style,
     font_size: Math.max(8, Math.min(96, style.font_size)),
     outline_color: style.outline_color || '#000000',
+    background_opacity: Math.max(0, Math.min(1, style.background_opacity ?? 0.7)),
     x,
     y: Math.max(0, Math.min(0.95, style.y)),
     width,
@@ -190,6 +200,22 @@ function clampSubtitleStyle(style: MultiTrackSubtitleStyle): MultiTrackSubtitleS
 function isTransparentSubtitleBackground(backgroundColor: string): boolean {
   const value = backgroundColor.trim().toLowerCase()
   return value === 'transparent' || value === 'rgba(0, 0, 0, 0)' || value === 'rgba(0,0,0,0)'
+}
+
+function subtitleBackgroundColor(backgroundColor: string, opacity: number): string {
+  if (isTransparentSubtitleBackground(backgroundColor)) return 'transparent'
+  const alpha = Math.max(0, Math.min(1, opacity))
+  const hex = backgroundColor.trim().match(/^#?([0-9a-fA-F]{6})$/)
+  if (hex) {
+    const raw = hex[1]
+    const red = Number.parseInt(raw.slice(0, 2), 16)
+    const green = Number.parseInt(raw.slice(2, 4), 16)
+    const blue = Number.parseInt(raw.slice(4, 6), 16)
+    return `rgba(${red}, ${green}, ${blue}, ${alpha})`
+  }
+  const rgb = backgroundColor.trim().match(/^rgba?\(\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+)(?:\s*,\s*[0-9.]+)?\s*\)$/)
+  if (rgb) return `rgba(${rgb[1]}, ${rgb[2]}, ${rgb[3]}, ${alpha})`
+  return backgroundColor
 }
 
 function subtitleTextShadow(outlineColor: string): string {
@@ -221,6 +247,7 @@ export function PreviewArea({
   onTrackSegmentsContentChange,
   onTaskTrackSegmentsChange,
   onSelectedSegmentDurationChange,
+  onGenerateSubtitleSpeech,
 }: Readonly<PreviewAreaProps>) {
   const t = useT()
   const draggedTaskImageIdRef = useRef<string | null>(null)
@@ -231,6 +258,7 @@ export function PreviewArea({
   const [activeTaskImageDragOver, setActiveTaskImageDragOver] = useState(false)
   const [editingTaskPrompt, setEditingTaskPrompt] = useState<{ segmentId: string; text: string } | null>(null)
   const [editingSubtitle, setEditingSubtitle] = useState<{ segmentId: string; text: string } | null>(null)
+  const [subtitleSpeechSettings, setSubtitleSpeechSettings] = useState<SubtitleSpeechSettings>(DEFAULT_SUBTITLE_SPEECH_SETTINGS)
   const [firstVideoMetadata, setFirstVideoMetadata] = useState<MultiTrackVideoMetadata | null>(null)
   const [resolutionInput, setResolutionInput] = useState(() => collectMultiTrackPreviewResolutionInput(node))
   const videoSegments = useMemo(() => (
@@ -249,26 +277,32 @@ export function PreviewArea({
       slot_name: firstVideoSegment.content.slot_name,
     })
   }, [videoSegments])
-  const activeVideo = selectedSegment?.trackType === 'task' || selectedSegment?.trackType === 'audio'
+  const previewSelectedSegment = selectedSegment?.trackType === 'audio' ? null : selectedSegment
+  const activeVideo = previewSelectedSegment?.trackType === 'task'
     ? null
-    : getActivePreviewVideoSegment(data, currentTime, selectedSegment?.trackType === 'video' ? selectedSegment.segment.id : null)
-  const activeAudioSources = getActivePreviewAudioSources(data, currentTime, selectedSegment)
-  const activeTaskImages = selectedSegment === null ? getActiveTaskImages(data, currentTime) : null
-  const activeTaskPrompt = selectedSegment === null ? getActiveTaskPrompt(data, currentTime) : null
+    : getActivePreviewVideoSegment(data, currentTime, previewSelectedSegment?.trackType === 'video' ? previewSelectedSegment.segment.id : null)
+  const activeAudioSources = getActivePreviewAudioSources(data, currentTime, previewSelectedSegment)
+  const activeTaskImages = previewSelectedSegment === null ? getActiveTaskImages(data, currentTime) : null
+  const activeTaskPrompt = previewSelectedSegment === null ? getActiveTaskPrompt(data, currentTime) : null
   const activeSubtitleSegments = useMemo(() => {
-    if (selectedSegment?.trackType === 'task' || selectedSegment?.trackType === 'audio') return []
+    if (previewSelectedSegment?.trackType === 'task') return []
     const segments = getActiveSubtitleSegments(data, currentTime)
-    if (selectedSegment?.trackType !== 'subtitle') return segments
-    const selectedSubtitle = selectedSegment.segment
+    if (previewSelectedSegment?.trackType !== 'subtitle') return segments
+    const selectedSubtitle = previewSelectedSegment.segment
     const selectedIndex = segments.findIndex((segment) => segment.id === selectedSubtitle.id)
     if (selectedIndex < 0) return [...segments, selectedSubtitle]
     return segments.map((segment, index) => index === selectedIndex ? selectedSubtitle : segment)
-  }, [currentTime, data, selectedSegment])
+  }, [currentTime, data, previewSelectedSegment])
   const resolution = parseMultiTrackPreviewResolution(resolutionInput, firstVideoMetadata)
   const selectedMediaDuration = selectedSegment?.trackType === 'video' || selectedSegment?.trackType === 'audio'
     ? frameToSeconds(segmentDuration(selectedSegment.segment), data.frame_rate)
     : null
-  const selectedAudio = selectedSegment?.trackType === 'audio' ? selectedSegment.segment : null
+  const selectedSubtitleStyle = selectedSegment?.trackType === 'subtitle'
+    ? clampSubtitleStyle({
+        ...DEFAULT_SUBTITLE_STYLE,
+        ...selectedSegment.segment.content.subtitle_style,
+      })
+    : null
   const selectedTaskImages = selectedSegment?.trackType === 'task'
     ? selectedSegment.segment.content.images ?? []
     : []
@@ -280,14 +314,16 @@ export function PreviewArea({
   const activeTaskPreviewImage = activeTaskImages?.images.find(({ image }) => image.id === activeTaskPreviewImageId)
     ?? activeTaskImages?.images[0]
     ?? null
-  const usesTaskImageOnlyPreview = Boolean(activeTaskImages && !selectedAudio && !activeVideo)
+  const usesTaskImageOnlyPreview = Boolean(activeTaskImages && !activeVideo)
   const activeTaskImagePanelClassName = previewLayoutMode === 'image-large'
     ? 'w-32 flex-[0_0_8rem]'
     : 'w-20 flex-[0_0_5rem]'
   const activeTaskVideoPanelClassName = previewLayoutMode === 'image-large'
     ? 'h-full flex-none'
     : 'h-full flex-none'
-  const previewMediaGroupClassName = usesTaskImageOnlyPreview || selectedAudio
+  const previewMediaGroupClassName = selectedSubtitleStyle
+    ? 'mx-auto flex h-full min-h-24 w-full max-w-full items-stretch justify-center gap-0'
+    : usesTaskImageOnlyPreview
     ? 'mx-auto flex h-full min-h-24 w-full max-w-full items-center justify-center gap-3'
     : 'mx-auto flex h-full min-h-24 w-fit max-w-full items-center justify-center gap-3'
 
@@ -517,7 +553,7 @@ export function PreviewArea({
             type="button"
             variant="outline"
             data-testid="task-preview-add-image"
-            className={`w-10 h-10 shrink-0 border-dashed bg-background/70 text-muted-foreground transition-colors hover:bg-background/90 ${
+            className={`cursor-pointer w-10 h-10 shrink-0 border-dashed bg-background/70 text-muted-foreground transition-colors hover:bg-background/90 ${
               activeTaskImageDragOver ? 'border-primary bg-accent/20 text-foreground' : 'border-border'
             } ${className}`}
             aria-label={t('multitrack.addImage')}
@@ -631,6 +667,8 @@ export function PreviewArea({
       ...activeSegment.content.subtitle_style,
     })
     const editing = editingSubtitle?.segmentId === activeSegment.id ? editingSubtitle : null
+    const renderedBackgroundColor = subtitleBackgroundColor(style.background_color, style.background_opacity)
+    const hasSubtitleBackground = !isTransparentSubtitleBackground(renderedBackgroundColor)
     const updateStyle = (patch: Partial<MultiTrackSubtitleStyle>) => {
       if (!selected) return
       onSelectedSegmentContentChange({
@@ -742,10 +780,10 @@ export function PreviewArea({
             autoFocus
             aria-label={t('multitrack.editSubtitle')}
             value={editing.text}
-            className={`inline-block h-auto max-w-full rounded-sm border-primary px-3 py-1.5 text-center leading-snug text-inherit shadow-none focus-visible:ring-1 ${isTransparentSubtitleBackground(style.background_color) ? '' : 'shadow-sm'}`}
+            className={`inline-block h-auto max-w-full rounded-sm border-primary px-3 py-1.5 text-center leading-snug text-inherit shadow-none focus-visible:ring-1 ${hasSubtitleBackground ? 'shadow-sm' : ''}`}
             style={{
               width: `${Math.max(editing.text.length + 2, 5)}em`,
-              backgroundColor: style.background_color,
+              backgroundColor: renderedBackgroundColor,
               color: style.color,
               fontSize: style.font_size,
               textShadow: subtitleTextShadow(style.outline_color || '#000000'),
@@ -769,9 +807,9 @@ export function PreviewArea({
         ) : (
           <span
             data-testid="subtitle-preview-text"
-            className={`inline-block max-w-full whitespace-pre-wrap break-words rounded-sm px-2 py-1 ${isTransparentSubtitleBackground(style.background_color) ? '' : 'shadow-sm'}`}
+            className={`inline-block max-w-full whitespace-pre-wrap break-words rounded-sm px-2 py-1 ${hasSubtitleBackground ? 'shadow-sm' : ''}`}
             style={{
-              backgroundColor: style.background_color,
+              backgroundColor: renderedBackgroundColor,
             }}
           >
             {activeSegment.content.text}
@@ -1055,20 +1093,7 @@ export function PreviewArea({
       ) : null}
       <div className="flex h-full min-h-24 w-full flex-col items-center justify-center gap-0.5">
         <div className={previewMediaGroupClassName}>
-          {selectedAudio ? (
-            <div data-testid="selected-audio-waveform" className="h-20 max-h-full w-full overflow-hidden px-2">
-              <AudioWaveform
-                content={{
-                  source_type: selectedAudio.content.source_type ?? 'input',
-                  file_path: selectedAudio.content.file_path,
-                  local_path: selectedAudio.content.local_path,
-                  url: selectedAudio.content.url,
-                  slot_name: selectedAudio.content.slot_name,
-                }}
-                className="h-full w-full"
-              />
-            </div>
-          ) : usesTaskImageOnlyPreview && activeTaskImages ? (
+          {usesTaskImageOnlyPreview && activeTaskImages ? (
             <div
               data-testid="task-preview-images"
               className="flex h-full min-h-0 w-full max-w-xl flex-col bg-black"
@@ -1124,8 +1149,11 @@ export function PreviewArea({
               </div>
             </div>
           )}
-          {!selectedAudio && !usesTaskImageOnlyPreview ? (
-            <div className={`min-w-0 transition-all duration-300 ease-in-out ${activeTaskImages ? activeTaskVideoPanelClassName : 'h-full flex-[1_1_100%]'}`}>
+          {!usesTaskImageOnlyPreview ? (
+            <div className={selectedSubtitleStyle
+              ? 'min-w-0 h-full flex-1 flex-col items-center justify-center flex'
+              : `min-w-0 transition-all duration-300 ease-in-out ${activeTaskImages ? activeTaskVideoPanelClassName : 'h-full flex-[1_1_100%]'}`
+            }>
               <VideoPreview
                 activeVideo={activeVideo}
                 resolution={resolution}
@@ -1142,6 +1170,24 @@ export function PreviewArea({
               </VideoPreview>
             </div>
           ) : null}
+          {selectedSegment?.trackType === 'subtitle' && selectedSubtitleStyle ? (
+            <SubtitleSettingsPanel
+              text={selectedSegment.segment.content.text ?? ''}
+              style={selectedSubtitleStyle}
+              onTextChange={(text) => onSelectedSegmentContentChange({ text })}
+              onStyleChange={(patch) => {
+                onSelectedSegmentContentChange({
+                  subtitle_style: clampSubtitleStyle({
+                    ...selectedSubtitleStyle,
+                    ...patch,
+                  }),
+                })
+              }}
+              speechSettings={subtitleSpeechSettings}
+              onSpeechSettingsChange={setSubtitleSpeechSettings}
+              onGenerateSpeech={(settings) => onGenerateSubtitleSpeech?.(selectedSegment.segment, settings) ?? Promise.resolve()}
+            />
+          ) : null}
         </div>
         {renderActiveTaskPromptBar()}
       </div>
@@ -1157,12 +1203,9 @@ export function PreviewArea({
           ? selectedSegment.segment.content.muted === true
           : false}
         selectedMediaDuration={selectedMediaDuration}
-        selectedSubtitleStyle={selectedSegment?.trackType === 'subtitle'
-          ? {
-              ...DEFAULT_SUBTITLE_STYLE,
-              ...selectedSegment.segment.content.subtitle_style,
-            }
-          : null}
+        rightInset={selectedSubtitleStyle
+          ? SUBTITLE_SETTINGS_PANEL_TOOLBAR_INSET
+          : 12}
         onGlobalSettingsChange={onGlobalSettingsChange}
         onSelectedSegmentContentChange={onSelectedSegmentContentChange}
         onSelectedSegmentDurationChange={onSelectedSegmentDurationChange}

@@ -52,6 +52,7 @@ export interface MultiTrackSubtitleStyle {
   color: string
   outline_color?: string
   background_color: string
+  background_opacity: number
   x: number
   y: number
   width: number
@@ -74,6 +75,7 @@ export interface MultiTrack {
   color: string
   muted: boolean
   solo?: boolean
+  visible?: boolean
   volume_db?: number
   locked: boolean
   media_index?: number

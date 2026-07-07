@@ -56,7 +56,13 @@ import {
   MULTITRACK_SUBTITLE_COLOR,
   requestSubtitleRecognition,
 } from '@/lib/subtitle-recognition'
+import {
+  applySubtitleSpeechAudio,
+  requestSubtitleSpeechAudio,
+  type SubtitleSpeechSettings,
+} from '@/lib/subtitle-speech'
 import { loadBrowserAudioMetadata } from '@/lib/audio-utils'
+import { invalidateMediaListCache } from '@/stores/media-list-store'
 import { uuid } from '@/lib/uuid'
 import { loadBrowserVideoMetadata } from '@/lib/video-utils'
 import type { MultiTrack, MultiTrackSegment, MultiTrackSegmentContent, MultiTrackSourceType, MultiTrackType, TrackData } from '@/types/multitrack'
@@ -438,6 +444,17 @@ export function MultiTrackWidget({ value, onChange, app, node }: Readonly<ReactW
     commitNormalizedTrackChange({
       ...data,
       tracks: data.tracks.map((track) => track.id === trackId ? { ...track, ...patch } : track),
+    })
+  }
+
+  function handleTrackVisibilityChange(trackId: string, visible: boolean) {
+    commitNormalizedTrackChange({
+      ...data,
+      tracks: data.tracks.map((track) => (
+        track.id === trackId && track.type === 'subtitle'
+          ? { ...track, visible }
+          : track
+      )),
     })
   }
 
@@ -898,6 +915,57 @@ export function MultiTrackWidget({ value, onChange, app, node }: Readonly<ReactW
     }
   }
 
+  async function handleGenerateSubtitleSpeech(
+    segment: MultiTrackSegment,
+    settings: SubtitleSpeechSettings,
+  ) {
+    if (segment.content.media_type !== 'subtitle') return
+    setIsPlaying(false)
+    try {
+      const result = await requestSubtitleSpeechAudio({
+        ...settings,
+        text: segment.content.text ?? '',
+      })
+      invalidateMediaListCache('outputs')
+      const latestData = dataRef.current
+      commitNormalizedTrackChange(applySubtitleSpeechAudio(latestData, {
+        subtitleSegmentId: segment.id,
+        startFrame: segment.start_frame,
+        endFrame: segment.end_frame,
+        filePath: result.filePath,
+        duration: result.duration,
+      }))
+      try {
+        app.extensionManager?.toast?.add({
+          severity: 'success',
+          summary: t('multitrack.subtitleSpeechComplete'),
+          detail: result.message || t('multitrack.subtitleSpeechSaved', { path: result.absolutePath || result.filePath }),
+          life: 5000,
+        })
+      } catch (toastError) {
+        console.error('[MultiTrackWidget] failed to show subtitle speech success:', toastError)
+      }
+    } catch (error) {
+      if (error instanceof MissingModelError) {
+        setMissingModel(error.model)
+        setModelDownloadError(null)
+        return
+      }
+      console.error('[MultiTrackWidget] subtitle speech generation failed:', error)
+      const message = error instanceof Error ? error.message : String(error)
+      try {
+        app.extensionManager?.toast?.add({
+          severity: 'error',
+          summary: t('multitrack.subtitleSpeechFailed'),
+          detail: message,
+          life: 5000,
+        })
+      } catch (toastError) {
+        console.error('[MultiTrackWidget] failed to show subtitle speech error:', toastError)
+      }
+    }
+  }
+
   function handleCutSegment(segmentId: string, splitFrame: number) {
     commitNormalizedTrackChange(splitTrackSegmentAtFrame(data, segmentId, splitFrame))
   }
@@ -921,6 +989,39 @@ export function MultiTrackWidget({ value, onChange, app, node }: Readonly<ReactW
     const nextSegmentCount = nextData.tracks.reduce((count, track) => count + track.segments.length, 0)
     if (nextSegmentCount === originalSegmentCount) return
 
+    commitNormalizedTrackChange(nextData)
+  }
+
+  function getTrimTargetSegmentIds(trimFrame: number): string[] {
+    const candidateSegmentIds = selectedSegmentIds.size > 0
+      ? selectedSegmentIds
+      : new Set(data.tracks.flatMap((track) => track.segments.map((segment) => segment.id)))
+
+    return data.tracks.flatMap((track) => (
+      track.segments
+        .filter((segment) => (
+          candidateSegmentIds.has(segment.id) &&
+          trimFrame > segment.start_frame &&
+          trimFrame < segment.end_frame
+        ))
+        .map((segment) => segment.id)
+    ))
+  }
+
+  function canTrimAtCurrentTime(): boolean {
+    const trimFrame = snapTimeToFrame(currentTime, data.frame_rate)
+    return getTrimTargetSegmentIds(trimFrame).length > 0
+  }
+
+  function handleTrimAtCurrentTime(edge: 'start' | 'end') {
+    const trimFrame = snapTimeToFrame(currentTime, data.frame_rate)
+    const targetSegmentIds = getTrimTargetSegmentIds(trimFrame)
+    if (targetSegmentIds.length === 0) return
+
+    const nextData = targetSegmentIds.reduce(
+      (currentData, segmentId) => buildResizedTrackData(currentData, segmentId, edge, trimFrame),
+      data,
+    )
     commitNormalizedTrackChange(nextData)
   }
 
@@ -982,6 +1083,7 @@ export function MultiTrackWidget({ value, onChange, app, node }: Readonly<ReactW
             onTrackSegmentsContentChange={handleTrackSegmentsContentChange}
             onTaskTrackSegmentsChange={handleTaskTrackSegmentsChange}
             onSelectedSegmentDurationChange={handleSelectedSegmentDurationChange}
+            onGenerateSubtitleSpeech={handleGenerateSubtitleSpeech}
           />
           <MultiTrackToolbar
             currentTime={currentTime}
@@ -1000,6 +1102,11 @@ export function MultiTrackWidget({ value, onChange, app, node }: Readonly<ReactW
               if (selectedSegmentId) handleDeleteSegment(selectedSegmentId)
             }}
             onCutAtCurrentTime={handleCutAtCurrentTime}
+            canTrimCenter={canTrimAtCurrentTime()}
+            canTrimLeft={canTrimAtCurrentTime()}
+            canTrimRight={canTrimAtCurrentTime()}
+            onTrimLeftAtCurrentTime={() => handleTrimAtCurrentTime('start')}
+            onTrimRightAtCurrentTime={() => handleTrimAtCurrentTime('end')}
             canUndo={canUndo}
             canRedo={canRedo}
             onUndo={undoTrackChange}
@@ -1041,6 +1148,7 @@ export function MultiTrackWidget({ value, onChange, app, node }: Readonly<ReactW
                     onClearSelection={handleClearSelection}
                     onDeleteSegment={handleDeleteSegment}
                     onDeleteTrack={handleDeleteTrack}
+                    onTrackVisibilityChange={handleTrackVisibilityChange}
                     onTrackAudioSettingsChange={handleTrackAudioSettingsChange}
                     onDistributeTaskSegments={handleDistributeTaskSegments}
                     onCloneTaskSegment={handleCloneTaskSegment}

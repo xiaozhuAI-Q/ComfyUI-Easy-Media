@@ -182,12 +182,12 @@ def test_parse_override_segments_accepts_second_ranges(monkeypatch):
     assert segments[0]["end_frame"] == 120
     assert segments[0]["text"] == "first"
     assert segments[0]["image_indices"] == [1]
-    assert segments[1]["start_frame"] == 121
+    assert segments[1]["start_frame"] == 120
     assert segments[1]["end_frame"] == 240
     assert segments[1]["type"] == "ref"
     assert segments[1]["text"] == "second"
     assert segments[1]["audio_indices"] == [2]
-    assert segments[2]["start_frame"] == 241
+    assert segments[2]["start_frame"] == 240
     assert segments[2]["end_frame"] == 360
 
 

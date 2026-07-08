@@ -16,7 +16,7 @@ _FRAME_RANGE_RE = re.compile(
 def _seconds_to_override_frame(seconds: float, frame_rate: int) -> int:
     if seconds <= 0:
         return 0
-    return math.ceil((seconds * frame_rate) / 4) * 4 + 1
+    return math.ceil((seconds * frame_rate) / 4) * 4
 
 
 def parse_override_segments(
@@ -44,16 +44,14 @@ def parse_override_segments(
     part_count = max(1, len(parts))
     for part_idx, part in enumerate(parts):
         m = _FRAME_RANGE_RE.search(part)
+        has_explicit_range = m is not None
         if m:
             is_seconds_range = bool(m.group(2) or m.group(4))
             if is_seconds_range:
                 start_seconds = float(m.group(1))
                 end_seconds = float(m.group(3))
                 start_frame = _seconds_to_override_frame(start_seconds, safe_frame_rate)
-                end_frame = max(
-                    start_frame,
-                    _seconds_to_override_frame(end_seconds, safe_frame_rate) - 1,
-                )
+                end_frame = max(start_frame, _seconds_to_override_frame(end_seconds, safe_frame_rate))
             else:
                 start_frame = int(m.group(1))
                 end_frame = int(m.group(3))
@@ -83,6 +81,7 @@ def parse_override_segments(
             'image_indices': image_indices,
             'audio_indices': audio_indices,
             'video_indices': video_indices,
+            '_has_explicit_range': has_explicit_range,
         })
     return segments
 
@@ -131,11 +130,17 @@ def build_multitrack_data_from_prompt_override(base_data: dict, prompt_override)
     audio_segments: list[dict] = []
     video_segments: list[dict] = []
     max_end_frame = 0
+    max_timeline_end_frame = 0
 
     for index, segment in enumerate(segments):
         start_frame = max(0, int(segment["start_frame"]))
-        end_frame = max(start_frame + 1, int(segment["end_frame"]) + 1)
+        timeline_end_frame = int(segment["end_frame"])
+        if segment.get("_has_explicit_range") is True:
+            end_frame = max(start_frame + 1, timeline_end_frame)
+        else:
+            end_frame = max(start_frame + 1, timeline_end_frame + 1)
         max_end_frame = max(max_end_frame, end_frame)
+        max_timeline_end_frame = max(max_timeline_end_frame, timeline_end_frame)
         duration = max(0.0, (end_frame - start_frame) / frame_rate)
 
         images: list[dict] = []
@@ -206,7 +211,7 @@ def build_multitrack_data_from_prompt_override(base_data: dict, prompt_override)
             })
 
     if prompt_override_has_frame_ranges(prompt_override):
-        total_length = max(1, max_end_frame)
+        total_length = max(1, max_timeline_end_frame + 1)
 
     override_data = dict(base_data)
     override_data["total_length"] = max(total_length, max_end_frame, 1)

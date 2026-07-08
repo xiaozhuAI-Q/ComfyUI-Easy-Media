@@ -113,10 +113,10 @@ After installing, open ComfyUI and find the bundled example workflows in the **T
 **Prompt Example**:
 
 ```
-@图片1 @音频1 镜头晃动，老者正望着光亮处神色慌张地喊话： 别学那玩意，别连线啊。 [0-120] | @图片2 @音频2 镜头缓慢推进，男人正在操作电脑，说道：有意思，这ComfyUI能火，我指定得学它 [121-241]
+@图片1 @音频1 镜头晃动，老者正望着光亮处神色慌张地喊话： 别学那玩意，别连线啊。 [0-120] | @图片2 @音频2 镜头缓慢推进，男人正在操作电脑，说道：有意思，这ComfyUI能火，我指定得学它 [120-240]
 ```
 
-- [0-120] and [121-241] represent the start and end frame ranges of segments on the timeline, in frames (frame), also supports [0-5s] [5-10s] writing, in seconds. If no time range is specified, the total duration set on the original timeline editor will be equally distributed.
+- [0-120] and [120-240] represent the start and end frame ranges of segments on the timeline, in frames (frame), also supports [0-5s] [5-10s] writing, in seconds. If no time range is specified, the total duration set on the original timeline editor will be equally distributed.
 - Segments are separated by `|`, representing different time periods. Each segment can contain `media placeholder`, `text prompt`, and `start-end frame range`.
 - Image injection: Supports `@image{n}`, `@img{n}`, `@图{n}`, `@图片{n}`, `@图像{n}` as placeholders to inject image resources, where `{n}` represents the n-th image in the image list (starting from 1). For example, `@image1` will inject the first image from the image list.
 - Video injection: Supports `@video{n}`, `@视频{n}` as placeholders to inject video resources, where `{n}` represents the n-th video in the video list (starting from 1). For example, `@video1` will inject the first video from the video list.

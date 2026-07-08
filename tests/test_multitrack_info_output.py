@@ -559,14 +559,14 @@ def test_timeline_editor_prompt_override_frame_range_total_length_is_not_increme
         {"resolution": "1280 x 720 (16:9)", "resize_method": "stretch"},
         "None",
         {"total_length": 999, "frame_rate": 24, "tracks": []},
-        prompt_override="hello [0-120]|nice [121-240]",
+        prompt_override="hello [0-120]|nice [120-240]",
     )
 
     timeline_info = result.values[0]
     assert timeline_info["total_length"] == 241
     assert [(segment["start_frame"], segment["end_frame"]) for segment in timeline_info["segments"]] == [
         (0, 120),
-        (121, 240),
+        (120, 240),
     ]
 
 
@@ -584,7 +584,7 @@ def test_timeline_editor_prompt_override_second_range_uses_exclusive_second_end(
     assert timeline_info["total_length"] == 241
     assert [(segment["start_frame"], segment["end_frame"]) for segment in timeline_info["segments"]] == [
         (0, 120),
-        (121, 240),
+        (120, 240),
     ]
 
 
@@ -600,7 +600,7 @@ def test_multitrack_editor_prompt_override_builds_slot_audio_and_video_tracks():
         {"resolution": "width x height (auto)", "resize_method": "stretch"},
         "None",
         {"total_length": 4, "frame_rate": 2, "tracks": [{"id": "old", "type": "task", "segments": []}]},
-        prompt_override="@image1 @audio2 @视频2 first [0-1,ref]|@video1 second [2-3]",
+        prompt_override="@image1 @audio2 @视频2 first [0-2,ref]|@video1 second [2-4]",
         image=[image],
         audio=[audio_one, audio_two],
         video=[video_one, video_two],
@@ -626,7 +626,7 @@ def test_multitrack_editor_prompt_override_builds_slot_audio_and_video_tracks():
     audio_track = tracks_info["tracks"][2]
     assert audio_track["segments"][0]["content"]["slot_name"] == "audio2"
     assert len(audio) == 1
-    assert audio[0]["waveform"].flatten().tolist() == [2.0, 2.0, 0.0, 0.0]
+    assert audio[0]["waveform"].flatten().tolist() == [2.0, 2.0, 0.0, 0.0, 0.0]
 
 
 def test_multitrack_editor_prompt_override_ranges_do_not_extend_total_length():
@@ -636,13 +636,13 @@ def test_multitrack_editor_prompt_override_ranges_do_not_extend_total_length():
         {"resolution": "1280 x 720 (16:9)", "resize_method": "stretch"},
         "None",
         {"total_length": 999, "frame_rate": 24, "tracks": []},
-        prompt_override="hello [0-120]|nice [121-240]",
+        prompt_override="hello [0-120]|nice [120-240]",
     )
     frame_tracks_info = frame_result.values[0]
     assert frame_tracks_info["total_length"] == 241
     assert [(segment["start_frame"], segment["end_frame"]) for segment in frame_tracks_info["tracks"][0]["segments"]] == [
-        (0, 121),
-        (121, 241),
+        (0, 120),
+        (120, 240),
     ]
 
     seconds_result = module.MultiTrackEditor.execute(
@@ -654,8 +654,8 @@ def test_multitrack_editor_prompt_override_ranges_do_not_extend_total_length():
     seconds_tracks_info = seconds_result.values[0]
     assert seconds_tracks_info["total_length"] == 241
     assert [(segment["start_frame"], segment["end_frame"]) for segment in seconds_tracks_info["tracks"][0]["segments"]] == [
-        (0, 121),
-        (121, 241),
+        (0, 120),
+        (120, 240),
     ]
 
 

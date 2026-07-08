@@ -117,7 +117,11 @@ def resize_video_with_ffmpeg(
         "-crf",
         "18",
         "-c:a",
-        "copy",
+        "aac",
+        "-b:a",
+        "192k",
+        "-pix_fmt",
+        "yuv420p",
         "-map_metadata",
         "0",
         "-movflags",
@@ -143,7 +147,10 @@ def resize_video_with_ffmpeg(
                 for line in process.stdout:
                     key, separator, raw_value = line.strip().partition("=")
                     if separator and key == "out_time_us" and duration:
-                        ratio = min(1.0, max(0.0, float(raw_value) / (float(duration) * 1_000_000)))
+                        out_time_us = _parse_positive_float(raw_value)
+                        if out_time_us is None:
+                            continue
+                        ratio = min(1.0, max(0.0, out_time_us / (float(duration) * 1_000_000)))
                         if progress_callback is not None:
                             progress_callback(ratio)
             return_code = process.wait()
@@ -665,6 +672,18 @@ def _parse_rate(value: str | None) -> Fraction | None:
     return Fraction(parsed).limit_denominator(100000)
 
 
+def _parse_positive_float(value: str | None) -> float | None:
+    if value in (None, "", "N/A"):
+        return None
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(parsed) or parsed <= 0:
+        return None
+    return parsed
+
+
 def _parse_video_stream(stream: dict) -> "tuple[int | None, int | None, float | None, Fraction | None, int | None]":
     """Extract width, height, fps, and frame count from a video stream dict."""
     width = int(stream["width"]) if stream.get("width") else None
@@ -711,7 +730,7 @@ def ffprobe_info(path: str) -> dict[str, Any]:
                 width, height, fps, fps_fraction, frame_count = _parse_video_stream(stream)
                 break
 
-        duration = float(duration_str) if duration_str else None
+        duration = _parse_positive_float(duration_str)
         if frame_count is None and duration is not None and fps:
             frame_count = max(1, round(duration * fps))
 

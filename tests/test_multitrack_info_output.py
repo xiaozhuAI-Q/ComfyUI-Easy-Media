@@ -997,6 +997,76 @@ def test_ffmpeg_video_merge_applies_segment_audio_filters(tmp_path, monkeypatch)
     assert "atrim=start=0.5:duration=1.0" in filter_graph
 
 
+def test_ffprobe_info_ignores_na_duration(tmp_path, monkeypatch):
+    module = _load_video_utils_module(tmp_path)
+    source = tmp_path / "source.mp4"
+    source.write_bytes(b"video")
+    monkeypatch.setattr(module, "get_ffmpeg_path", lambda _name="ffprobe": "ffprobe")
+
+    def fake_run(command, capture_output=False, text=False):
+        return types.SimpleNamespace(
+            returncode=0,
+            stdout=json.dumps({
+                "format": {"duration": "N/A"},
+                "streams": [{
+                    "codec_type": "video",
+                    "width": 1920,
+                    "height": 1080,
+                    "avg_frame_rate": "24/1",
+                    "nb_frames": "48",
+                }],
+            }),
+        )
+
+    monkeypatch.setattr(module.subprocess, "run", fake_run)
+
+    info = module.ffprobe_info(str(source))
+
+    assert info["duration"] is None
+    assert info["width"] == 1920
+    assert info["height"] == 1080
+    assert info["fps"] == 24.0
+    assert info["frame_count"] == 48
+
+
+def test_ffmpeg_resize_skips_na_progress_and_outputs_standard_mp4(tmp_path, monkeypatch):
+    module = _load_video_utils_module(tmp_path)
+    source = tmp_path / "source.mp4"
+    source.write_bytes(b"video")
+    module.folder_paths.get_temp_directory = lambda: str(tmp_path)
+    monkeypatch.setattr(module, "get_ffmpeg_path", lambda _name="ffmpeg": "ffmpeg")
+    monkeypatch.setattr(module, "ffprobe_info", lambda _source: {"duration": 2.0})
+    commands = []
+
+    class FakePopen:
+        def __init__(self, command, stdout=None, stderr=None, text=False):
+            commands.append(command)
+            self.stdout = iter(["out_time_us=N/A\n", "out_time_us=1000000\n"])
+
+        def wait(self):
+            return 0
+
+    progress = []
+    monkeypatch.setattr(module.subprocess, "Popen", FakePopen)
+
+    output = module.resize_video_with_ffmpeg(
+        str(source),
+        1920,
+        1080,
+        "resize",
+        progress_callback=progress.append,
+    )
+
+    assert output is not None
+    assert output.endswith(".mp4")
+    command = commands[0]
+    assert command[command.index("-c:v") + 1] == "libx264"
+    assert command[command.index("-c:a") + 1] == "aac"
+    assert command[command.index("-pix_fmt") + 1] == "yuv420p"
+    assert "scale=1920:1080:force_original_aspect_ratio=decrease" in command[command.index("-vf") + 1]
+    assert progress == [0.0, 0.5, 1.0]
+
+
 def test_extract_video_audio_to_temp_applies_trim_window(tmp_path, monkeypatch):
     module = _load_video_utils_module(tmp_path)
     source = tmp_path / "source.mp4"

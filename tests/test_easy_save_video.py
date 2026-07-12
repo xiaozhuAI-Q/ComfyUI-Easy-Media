@@ -62,6 +62,9 @@ class _FakeIO:
     class Boolean:
         Input = _FakeInput
 
+    class Combo:
+        Input = _FakeInput
+
     class Image:
         Input = _FakeInput
         Output = _FakeInput
@@ -243,7 +246,9 @@ def _install_comfy_stubs(monkeypatch, tmp_path: Path):
     )
     monkeypatch.setitem(sys.modules, "easy_media", types.ModuleType("easy_media"))
     monkeypatch.setitem(sys.modules, "easy_media.nodes", types.ModuleType("easy_media.nodes"))
-    monkeypatch.setitem(sys.modules, "easy_media.utils", types.ModuleType("easy_media.utils"))
+    easy_media_utils = types.ModuleType("easy_media.utils")
+    easy_media_utils.merge_two_audio = lambda first, second, method: (first, second, method)
+    monkeypatch.setitem(sys.modules, "easy_media.utils", easy_media_utils)
     monkeypatch.setitem(sys.modules, "easy_media.utils.video", utils_video)
 
 
@@ -461,7 +466,10 @@ def test_merge_videos_from_paths_schema_has_frame_count_widget(monkeypatch, tmp_
     assert frame_input.kwargs["default"] == -1
     assert frame_input.kwargs["min"] == -1
     assert frame_input.kwargs["step"] == 1
-    audio_input = schema.inputs[-1]
+    audio_mode_input = next(item for item in schema.inputs if item.args[0] == "audio_mode")
+    assert audio_mode_input.kwargs["options"] == ["merge", "override"]
+    assert audio_mode_input.kwargs["default"] == "merge"
+    audio_input = next(item for item in schema.inputs if item.args[0] == "audio")
     assert audio_input.args[0] == "audio"
     assert audio_input.kwargs["optional"] is True
 
@@ -532,20 +540,87 @@ def test_merge_videos_from_paths_attaches_optional_audio_to_final_video(monkeypa
     audio = {"waveform": object(), "sample_rate": 48000}
     calls = []
 
-    def fake_replace(video, replacement_audio, tag):
-        calls.append((video, replacement_audio, tag))
+    def fake_attach(video, replacement_audio, audio_mode, tag):
+        calls.append((video, replacement_audio, audio_mode, tag))
         return "muxed.mp4"
 
-    monkeypatch.setattr(video_module, "_replace_video_audio_with_ffmpeg", fake_replace)
+    monkeypatch.setattr(video_module, "_attach_video_audio_with_ffmpeg", fake_attach)
 
     result = video_module.EasyMergeVideosFromPaths.execute(
         "output/clip.mp4",
         audio=audio,
     )
 
-    assert calls == [(str(source), audio, "[EasyMergeVideosFromPaths]")]
+    assert calls == [(str(source), audio, "merge", "[EasyMergeVideosFromPaths]")]
     assert result.values == ("muxed.mp4",)
     assert source.read_bytes() == b"clip"
+
+
+def test_merge_videos_from_paths_can_override_existing_audio(monkeypatch, tmp_path):
+    video_module = _load_video_module(monkeypatch, tmp_path)
+    source = tmp_path / "output" / "clip.mp4"
+    source.write_bytes(b"clip")
+    audio = {"waveform": object(), "sample_rate": 48000}
+    calls = []
+
+    monkeypatch.setattr(
+        video_module,
+        "_attach_video_audio_with_ffmpeg",
+        lambda video, replacement_audio, audio_mode, tag: calls.append(
+            (video, replacement_audio, audio_mode, tag)
+        ) or "muxed.mp4",
+    )
+
+    video_module.EasyMergeVideosFromPaths.execute(
+        "output/clip.mp4",
+        audio_mode="override",
+        audio=audio,
+    )
+
+    assert calls == [(str(source), audio, "override", "[EasyMergeVideosFromPaths]")]
+
+
+def test_attach_video_audio_merge_combines_original_and_input_audio(monkeypatch, tmp_path):
+    video_module = _load_video_module(monkeypatch, tmp_path)
+    original_audio = {"waveform": "original", "sample_rate": 48000}
+    input_audio = {"waveform": "input", "sample_rate": 48000}
+    calls = []
+
+    monkeypatch.setattr(video_module, "_extract_audio_with_ffmpeg", lambda _video: original_audio)
+    monkeypatch.setattr(
+        video_module,
+        "merge_two_audio",
+        lambda first, second, method: calls.append((first, second, method)) or "merged-audio",
+    )
+    monkeypatch.setattr(
+        video_module,
+        "_replace_video_audio_with_ffmpeg",
+        lambda video, audio, tag: calls.append((video, audio, tag)) or "muxed.mp4",
+    )
+
+    result = video_module._attach_video_audio_with_ffmpeg(
+        "source.mp4", input_audio, "merge", "[test]"
+    )
+
+    assert result == "muxed.mp4"
+    assert calls == [
+        (original_audio, input_audio, "add"),
+        ("source.mp4", "merged-audio", "[test]"),
+    ]
+
+
+def test_merge_videos_from_paths_does_not_send_progress_text(monkeypatch, tmp_path):
+    video_module = _load_video_module(monkeypatch, tmp_path)
+    source = tmp_path / "output" / "clip.mp4"
+    source.write_bytes(b"clip")
+    prompt_server = sys.modules["server"].PromptServer
+    calls = []
+    prompt_server.instance.send_progress_text = lambda *args: calls.append(args)
+    video_module.EasyMergeVideosFromPaths.hidden.unique_id = "node-1"
+
+    video_module.EasyMergeVideosFromPaths.execute("output/clip.mp4")
+
+    assert calls == []
 
 
 def test_ffmpeg_audio_mux_reuses_file_backed_video(monkeypatch, tmp_path):

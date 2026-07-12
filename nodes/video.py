@@ -15,8 +15,8 @@ import folder_paths
 import torch
 from comfy_api.latest import Input, InputImpl, Types, io, ui
 from comfy.utils import ProgressBar
-from server import PromptServer
 
+from ..utils import merge_two_audio
 from ..utils.video import extract_merge_spec, ffmpeg_concat, ffmpeg_concat_with_fade, ffmpeg_extract_audio, ffmpeg_replace_audio, ffmpeg_supports_xfade, ffprobe_info, normalize_video_images, tensor_crossfade_audio, tensor_crossfade_images, trim_video_with_ffmpeg, validate_merge_compatibility, video_input_to_local_file
 
 logger = logging.getLogger(__name__)
@@ -347,6 +347,26 @@ def _replace_video_audio_with_ffmpeg(source_video: Input.Video, audio: dict, tag
                 os.unlink(output_path)
             except OSError:
                 pass
+
+
+def _attach_video_audio_with_ffmpeg(
+    source_video: Input.Video,
+    audio: dict,
+    audio_mode: str,
+    tag: str,
+) -> Input.Video:
+    """Merge or override the source audio track with the supplied AUDIO input."""
+    if audio_mode not in {"merge", "override"}:
+        raise ValueError(f"{tag} unsupported audio mode: {audio_mode!r}.")
+
+    output_audio = audio
+    if audio_mode == "merge":
+        original_audio = _extract_audio_with_ffmpeg(source_video)
+        output_audio = merge_two_audio(original_audio, audio, "add")
+        if output_audio is None:
+            raise ValueError(f"{tag} could not prepare audio for merging.")
+
+    return _replace_video_audio_with_ffmpeg(source_video, output_audio, tag)
 
 
 def _video_to_local_file(video: Input.Video) -> "tuple[str | None, list[str]]":
@@ -1011,6 +1031,12 @@ class EasyMergeVideosFromPaths(io.ComfyNode):
                     step=1,
                     tooltip="Maximum frames to keep after merging. Use -1 to keep all frames.",
                 ),
+                io.Combo.Input(
+                    "audio_mode",
+                    options=["merge", "override"],
+                    default="merge",
+                    tooltip="Merge the AUDIO input with the video's existing audio, or override it.",
+                ),
                 io.Audio.Input(
                     "audio",
                     optional=True,
@@ -1037,6 +1063,7 @@ class EasyMergeVideosFromPaths(io.ComfyNode):
         cls,
         paths: str,
         frame_count: int = -1,
+        audio_mode: str = "merge",
         audio: Optional[dict] = None,
     ) -> io.NodeOutput:
         raw_paths = _expand_comfy_video_path_patterns(_parse_path_list(paths))
@@ -1046,14 +1073,11 @@ class EasyMergeVideosFromPaths(io.ComfyNode):
         use_transition = False
         fade_duration = 0.5
 
-        node_id: str = str(cls.hidden.unique_id or "")
         total = len(raw_paths)
         pbar = ProgressBar(total + 2)
 
-        def _progress(step: int, msg: str) -> None:
+        def _progress(step: int, _msg: str) -> None:
             pbar.update_absolute(step, total + 2)
-            if node_id:
-                PromptServer.instance.send_progress_text(msg, node_id)
 
         def _cleanup_owned(paths_to_clean: set[str], keep: str | None = None) -> None:
             for path in paths_to_clean:
@@ -1073,9 +1097,10 @@ class EasyMergeVideosFromPaths(io.ComfyNode):
             paths_to_clean = owned_paths or set()
             if audio is not None:
                 try:
-                    video = _replace_video_audio_with_ffmpeg(
+                    video = _attach_video_audio_with_ffmpeg(
                         video,
                         audio,
+                        audio_mode,
                         "[EasyMergeVideosFromPaths]",
                     )
                 finally:
